@@ -12,31 +12,25 @@ export default class BayesianNetwork {
     this.edges.push(edge);
   }
 
-  findNodeById(nodeId) {
-    return this.nodes.find(x => x.id === nodeId);
-  }
-
-  findParentsByChildId(nodeId) {
-    return this.edges
-      .filter(e => e.to === nodeId)
-      .map(e => e.from);
-  }
-
   infer(nodeId, state) {
-    // TODO: NEED TO REFACTOR THIS!!!
+    let joint = this._buildJointDistribution();
+
+    joint = this._filterJointDistribution(joint, nodeId, state);
+
+    return this._calculateProbability(joint);
+  }
+
+  _buildJointDistribution() {
     let joint = [];
 
-    /*
-     * Build joint distribution
-     */
     for (let i = 0; i < this.nodes.length; i++) {
       let node = this.nodes[i];
-      let parents = this.findParentsByChildId(node.id);
+      let parents = this._findParentsByChildId(node.id);
 
       let p = { node: node.id, state: null };
       let q = parents.map(x => ({ node: x, state: null }));
 
-      joint.push({ p: p, q: q });
+      joint.push({ p, q });
     }
 
     joint = [ joint ];
@@ -74,7 +68,7 @@ export default class BayesianNetwork {
               q.push(qq);
             }
 
-            nr.push({ p: p, q: q });
+            nr.push({ p, q });
           }
 
           newJoint.push(nr);
@@ -84,16 +78,17 @@ export default class BayesianNetwork {
       joint = newJoint;
     }
 
-    /*
-     * Filter joint distribution
-     */
+    return joint;
+  }
+
+  _filterJointDistribution(joint, nodeId, state) {
     for (let i = joint.length - 1; i > -1; i--) {
       let rem = false;
 
       for (let j = 0; j < joint[i].length; j++) {
-        let ooo = joint[i][j].p;
+        let p = joint[i][j].p;
 
-        if (ooo.node === nodeId && ooo.state !== state) {
+        if (p.node === nodeId && p.state !== state) {
           rem = true;
           break;
         }
@@ -104,25 +99,26 @@ export default class BayesianNetwork {
       }
     }
 
-    /*
-     * Calculate probability
-     */
+    return joint;
+  }
+
+  _calculateProbability(joint) {
     let prob = 0;
 
     for (let i = 0; i < joint.length; i++) {
       let aux = 1;
 
       for (let j = 0; j < joint[i].length; j++) {
-        let ooo = joint[i][j];
-        let node = this.findNodeById(ooo.p.node);
-        let si = node.states.indexOf(ooo.p.state);
+        let ji = joint[i][j];
+        let node = this.nodes.find(x => x.id === ji.p.node);
+        let si = node.states.indexOf(ji.p.state);
 
         for (let c = 0; c < node.cpt.length; c++) {
           let a = true;
 
-          for (let cc = 0; cc < ooo.q.length; cc++) {
+          for (let cc = 0; cc < ji.q.length; cc++) {
             for (let ccc = 0; ccc < node.cpt[c].conditions.length; ccc++) {
-              if (ooo.q[cc].node === node.cpt[c].conditions[ccc].parent && ooo.q[cc].state !==  node.cpt[c].conditions[ccc].state) {
+              if (ji.q[cc].node === node.cpt[c].conditions[ccc].parent && ji.q[cc].state !== node.cpt[c].conditions[ccc].state) {
                 a = false;
                 break;
               }
@@ -144,5 +140,11 @@ export default class BayesianNetwork {
     }
 
     return prob;
+  }
+
+  _findParentsByChildId(nodeId) {
+    return this.edges
+      .filter(e => e.to === nodeId)
+      .map(e => e.from);
   }
 }

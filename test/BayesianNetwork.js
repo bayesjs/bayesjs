@@ -1,70 +1,10 @@
 import chai from 'chai';
-import BayesianNetwork from '../src';
+import BayesianNetwork from '../src/BayesianNetwork';
+import { nodes, edges } from './RainSprinklerGrassWet';
 
 chai.should();
 
 describe('BayesianNetwork', function () {
-  let cptRain = [
-    {
-      conditions: [],
-      probabilities: [ 0.2, 0.8 ]
-    }
-  ];
-
-  let cptSprinkler = [
-    {
-      conditions: [ { parent: 'RAIN', state: 'F'} ],
-      probabilities: [ 0.4, 0.6 ]
-    },
-    {
-      conditions: [ { parent: 'RAIN', state: 'T'} ],
-      probabilities: [ 0.01, 0.99 ]
-    }
-  ];
-
-  let cptGrassWet = [
-    {
-      conditions: [
-        { parent: 'SPRINKLER', state: 'F'},
-        { parent: 'RAIN', state: 'F'}
-      ],
-      probabilities: [ 0.0, 1.0 ]
-    },
-    {
-      conditions: [
-        { parent: 'SPRINKLER', state: 'F'},
-        { parent: 'RAIN', state: 'T'}
-      ],
-      probabilities: [ 0.8, 0.2 ]
-    },
-    {
-      conditions: [
-        { parent: 'SPRINKLER', state: 'T'},
-        { parent: 'RAIN', state: 'F'}
-      ],
-      probabilities: [ 0.9, 0.1 ]
-    },
-    {
-      conditions: [
-        { parent: 'SPRINKLER', state: 'T'},
-        { parent: 'RAIN', state: 'T'}
-      ],
-      probabilities: [ 0.99, 0.01 ]
-    }
-  ];
-
-  let nodes = [
-    { id: 'RAIN',      states: [ 'T', 'F' ], cpt: cptRain },
-    { id: 'SPRINKLER', states: [ 'T', 'F' ], cpt: cptSprinkler },
-    { id: 'GRASS_WET', states: [ 'T', 'F' ], cpt: cptGrassWet }
-  ];
-
-  let edges = [
-    { from: 'RAIN',      to: 'SPRINKLER' },
-    { from: 'RAIN',      to: 'GRASS_WET' },
-    { from: 'SPRINKLER', to: 'GRASS_WET' }
-  ];
-
   it('should add new node', function () {
     let network = new BayesianNetwork();
 
@@ -82,27 +22,6 @@ describe('BayesianNetwork', function () {
 
     network.edges.forEach((x, i) => x.should.be.equal(edges[i]));
     network.edges.length.should.be.equal(edges.length);
-  });
-
-  it('can find node', function () {
-    let network = new BayesianNetwork();
-    nodes.forEach(x => network.addNode(x));
-
-    let node = network.findNodeById(nodes[0].id);
-
-    node.id.should.be.equal(nodes[0].id);
-  });
-
-  it('can find parents', function () {
-    let network = new BayesianNetwork();
-    nodes.forEach(x => network.addNode(x));
-    edges.forEach(x => network.addEdge(x));
-
-    let parents = network.findParentsByChildId(nodes[2].id);
-
-    parents[0].should.be.equal('RAIN');
-    parents[1].should.be.equal('SPRINKLER');
-    parents.length.should.be.equal(2);
   });
 
   it('should infer', function () {
