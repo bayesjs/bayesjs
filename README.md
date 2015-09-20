@@ -98,7 +98,7 @@ network.infer(nodeToInfer, giving).toFixed(4); // "0.3577"
 
 ## Versioning
 
-We follow (SemVer)[http://semver.org/], so usage in production is discouraged before we reach 1.x.x.
+We follow [SemVer](http://semver.org/), so usage in production is discouraged before we reach 1.x.x.
 
 ## License
 
