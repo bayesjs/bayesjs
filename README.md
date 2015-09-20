@@ -6,8 +6,6 @@ Inference on Bayesian Networks
 
 This example is based on [this article](https://en.wikipedia.org/wiki/Bayesian_network#Example) on Wikipedia.
 
-![Simple Bayesian Network](https://upload.wikimedia.org/wikipedia/commons/0/0e/SimpleBayesNet.svg)
-
 ```js
 // First of all, we define the CPTs of each node
 const cptRain = [
