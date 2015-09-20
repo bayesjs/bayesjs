@@ -90,8 +90,15 @@ let nodesToInfer = [
 network.infer(nodesToInfer).toFixed(4); // "0.0020"
 
 // Inference on some nodes, knowing the state of others
-network.infer({node: 'RAIN', state: 'T'}, /* giving */ {node: 'GRASS_WET', state: 'T'}).toFixed(4); // "0.3577"
+let nodeToInfer = {node: 'RAIN', state: 'T'};
+let giving = {node: 'GRASS_WET', state: 'T'};
+
+network.infer(nodeToInfer, giving).toFixed(4); // "0.3577"
 ```
+
+## Versioning
+
+We follow (SemVer)[http://semver.org/], so usage in production is discouraged before we reach 1.x.x.
 
 ## License
 
