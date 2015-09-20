@@ -12,10 +12,14 @@ export default class BayesianNetwork {
     this.edges.push(edge);
   }
 
-  infer(nodeId, state) {
+  infer(nodes) {
+    nodes = [].concat(nodes);
+
     let joint = this._buildJointDistribution();
 
-    joint = this._filterJointDistribution(joint, nodeId, state);
+    for (let i = 0; i < nodes.length; i++) {
+      joint = this._filterJointDistribution(joint, nodes[i].node, nodes[i].state);
+    }
 
     return this._calculateProbability(joint);
   }

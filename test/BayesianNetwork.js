@@ -24,16 +24,30 @@ describe('BayesianNetwork', function () {
     network.edges.length.should.be.equal(edges.length);
   });
 
-  it('should infer', function () {
+  it('should infer single node', function () {
     let network = new BayesianNetwork();
     nodes.forEach(x => network.addNode(x));
     edges.forEach(x => network.addEdge(x));
 
-    network.infer('RAIN', 'T').toFixed(4).should.be.equal('0.2000');
-    network.infer('RAIN', 'F').toFixed(4).should.be.equal('0.8000');
-    network.infer('SPRINKLER', 'T').toFixed(4).should.be.equal('0.3220');
-    network.infer('SPRINKLER', 'F').toFixed(4).should.be.equal('0.6780');
-    network.infer('GRASS_WET', 'T').toFixed(4).should.be.equal('0.4484');
-    network.infer('GRASS_WET', 'F').toFixed(4).should.be.equal('0.5516');
+    network.infer({node: 'RAIN', state: 'T'}).toFixed(4).should.be.equal('0.2000');
+    network.infer({node: 'RAIN', state: 'F'}).toFixed(4).should.be.equal('0.8000');
+    network.infer({node: 'SPRINKLER', state: 'T'}).toFixed(4).should.be.equal('0.3220');
+    network.infer({node: 'SPRINKLER', state: 'F'}).toFixed(4).should.be.equal('0.6780');
+    network.infer({node: 'GRASS_WET', state: 'T'}).toFixed(4).should.be.equal('0.4484');
+    network.infer({node: 'GRASS_WET', state: 'F'}).toFixed(4).should.be.equal('0.5516');
+  });
+
+  it('should infer multiple nodes', function () {
+    let network = new BayesianNetwork();
+    nodes.forEach(x => network.addNode(x));
+    edges.forEach(x => network.addEdge(x));
+
+    let nodesToInfer = [
+      {node: 'RAIN', state: 'T'},
+      {node: 'SPRINKLER', state: 'T'},
+      {node: 'GRASS_WET', state: 'T'}
+    ];
+
+    network.infer(nodesToInfer).toFixed(4).should.be.equal('0.0020');
   });
 });
