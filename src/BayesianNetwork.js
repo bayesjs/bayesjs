@@ -12,16 +12,26 @@ export default class BayesianNetwork {
     this.edges.push(edge);
   }
 
-  infer(nodes) {
+  infer(nodes, giving = []) {
     nodes = [].concat(nodes);
+    giving = [].concat(giving);
 
     let joint = this._buildJointDistribution();
+    let probGiving = 1;
 
     for (let i = 0; i < nodes.length; i++) {
       joint = this._filterJointDistribution(joint, nodes[i].node, nodes[i].state);
     }
 
-    return this._calculateProbability(joint);
+    if (giving.length > 0) {
+      for (let i = 0; i < giving.length; i++) {
+        joint = this._filterJointDistribution(joint, giving[i].node, giving[i].state);
+      }
+
+      probGiving = this.infer(giving);
+    }
+
+    return this._calculateProbability(joint) / probGiving;
   }
 
   _buildJointDistribution() {

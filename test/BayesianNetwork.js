@@ -50,4 +50,15 @@ describe('BayesianNetwork', function () {
 
     network.infer(nodesToInfer).toFixed(4).should.be.equal('0.0020');
   });
+
+  it('should infer nodes giving other nodes', function () {
+    let network = new BayesianNetwork();
+    nodes.forEach(x => network.addNode(x));
+    edges.forEach(x => network.addEdge(x));
+
+    let nodeToInfer = {node: 'RAIN', state: 'T'};
+    let giving = {node: 'GRASS_WET', state: 'T'};
+
+    network.infer(nodeToInfer, giving).toFixed(4).should.be.equal('0.3577');
+  });
 });

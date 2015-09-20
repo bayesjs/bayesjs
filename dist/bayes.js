@@ -52,25 +52,6 @@ return /******/ (function(modules) { // webpackBootstrap
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, '__esModule', {
-	  value: true
-	});
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
-	var _BayesianNetwork = __webpack_require__(1);
-
-	var _BayesianNetwork2 = _interopRequireDefault(_BayesianNetwork);
-
-	exports['default'] = _BayesianNetwork2['default'];
-	module.exports = exports['default'];
-
-/***/ },
-/* 1 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -102,33 +83,38 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.edges.push(edge);
 	    }
 	  }, {
-	    key: "findNodeById",
-	    value: function findNodeById(nodeId) {
-	      return this.nodes.find(function (x) {
-	        return x.id === nodeId;
-	      });
-	    }
-	  }, {
-	    key: "findParentsByChildId",
-	    value: function findParentsByChildId(nodeId) {
-	      return this.edges.filter(function (e) {
-	        return e.to === nodeId;
-	      }).map(function (e) {
-	        return e.from;
-	      });
-	    }
-	  }, {
 	    key: "infer",
-	    value: function infer(nodeId, state) {
-	      // TODO: NEED TO REFACTOR THIS!!!
+	    value: function infer(nodes) {
+	      var giving = arguments.length <= 1 || arguments[1] === undefined ? [] : arguments[1];
+
+	      nodes = [].concat(nodes);
+	      giving = [].concat(giving);
+
+	      var joint = this._buildJointDistribution();
+	      var probGiving = 1;
+
+	      for (var i = 0; i < nodes.length; i++) {
+	        joint = this._filterJointDistribution(joint, nodes[i].node, nodes[i].state);
+	      }
+
+	      if (giving.length > 0) {
+	        for (var i = 0; i < giving.length; i++) {
+	          joint = this._filterJointDistribution(joint, giving[i].node, giving[i].state);
+	        }
+
+	        probGiving = this.infer(giving);
+	      }
+
+	      return this._calculateProbability(joint) / probGiving;
+	    }
+	  }, {
+	    key: "_buildJointDistribution",
+	    value: function _buildJointDistribution() {
 	      var joint = [];
 
-	      /*
-	       * Build joint distribution
-	       */
 	      for (var i = 0; i < this.nodes.length; i++) {
 	        var node = this.nodes[i];
-	        var parents = this.findParentsByChildId(node.id);
+	        var parents = this._findParentsByChildId(node.id);
 
 	        var p = { node: node.id, state: null };
 	        var q = parents.map(function (x) {
@@ -183,16 +169,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	        joint = newJoint;
 	      }
 
-	      /*
-	       * Filter joint distribution
-	       */
+	      return joint;
+	    }
+	  }, {
+	    key: "_filterJointDistribution",
+	    value: function _filterJointDistribution(joint, nodeId, state) {
 	      for (var i = joint.length - 1; i > -1; i--) {
 	        var rem = false;
 
 	        for (var j = 0; j < joint[i].length; j++) {
-	          var ooo = joint[i][j].p;
+	          var p = joint[i][j].p;
 
-	          if (ooo.node === nodeId && ooo.state !== state) {
+	          if (p.node === nodeId && p.state !== state) {
 	            rem = true;
 	            break;
 	          }
@@ -203,25 +191,31 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	      }
 
-	      /*
-	       * Calculate probability
-	       */
+	      return joint;
+	    }
+	  }, {
+	    key: "_calculateProbability",
+	    value: function _calculateProbability(joint) {
+	      var _this = this;
+
 	      var prob = 0;
 
 	      for (var i = 0; i < joint.length; i++) {
 	        var aux = 1;
 
-	        for (var j = 0; j < joint[i].length; j++) {
-	          var ooo = joint[i][j];
-	          var node = this.findNodeById(ooo.p.node);
-	          var si = node.states.indexOf(ooo.p.state);
+	        var _loop = function (j) {
+	          var ji = joint[i][j];
+	          var node = _this.nodes.find(function (x) {
+	            return x.id === ji.p.node;
+	          });
+	          var si = node.states.indexOf(ji.p.state);
 
 	          for (var c = 0; c < node.cpt.length; c++) {
 	            var a = true;
 
-	            for (var cc = 0; cc < ooo.q.length; cc++) {
+	            for (var cc = 0; cc < ji.q.length; cc++) {
 	              for (var ccc = 0; ccc < node.cpt[c].conditions.length; ccc++) {
-	                if (ooo.q[cc].node === node.cpt[c].conditions[ccc].parent && ooo.q[cc].state !== node.cpt[c].conditions[ccc].state) {
+	                if (ji.q[cc].node === node.cpt[c].conditions[ccc].parent && ji.q[cc].state !== node.cpt[c].conditions[ccc].state) {
 	                  a = false;
 	                  break;
 	                }
@@ -237,12 +231,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	              break;
 	            }
 	          }
+	        };
+
+	        for (var j = 0; j < joint[i].length; j++) {
+	          _loop(j);
 	        }
 
 	        prob += aux;
 	      }
 
 	      return prob;
+	    }
+	  }, {
+	    key: "_findParentsByChildId",
+	    value: function _findParentsByChildId(nodeId) {
+	      return this.edges.filter(function (e) {
+	        return e.to === nodeId;
+	      }).map(function (e) {
+	        return e.from;
+	      });
 	    }
 	  }]);
 
