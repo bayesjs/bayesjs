@@ -2,7 +2,7 @@
 
 Inference on Bayesian Networks
 
-# Example
+## Example
 
 This example is based on [this article](https://en.wikipedia.org/wiki/Bayesian_network#Example) on Wikipedia.
 
@@ -92,3 +92,7 @@ network.infer(nodesToInfer).toFixed(4); // "0.0020"
 // Inference on some nodes, knowing the state of others
 network.infer({node: 'RAIN', state: 'T'}, /* giving */ {node: 'GRASS_WET', state: 'T'}).toFixed(4); // "0.3577"
 ```
+
+## License
+
+[MIT](LICENSE.md)
