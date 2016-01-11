@@ -24,6 +24,9 @@
     "url": "https://github.com/Acad-Feevale/bayesjs/issues"
   },
   "homepage": "https://github.com/Acad-Feevale/bayesjs#readme",
+  "dependencies": {
+    "deep-equal": "^1.0.1"
+  },
   "devDependencies": {
     "babel-core": "^6.4.0",
     "babel-eslint": "^4.1.6",

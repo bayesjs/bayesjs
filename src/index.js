@@ -1,1 +1,2 @@
-export * from './builder.js';
+export * from './builder';
+export * from './infer';
