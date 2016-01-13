@@ -1,10 +1,5 @@
+dist
+
 # node
 node_modules/
-
-# visual studio
-bin/
-obj/
-.vs/
-packages/
-*.suo
-*.user
+npm-debug.log
