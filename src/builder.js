@@ -51,12 +51,12 @@ const checkIfPropertiesAreValid = (network, node) => {
   if (node.parents.length === 0) {
     checkIfAllProbabilitiesArePresent(node.states, node.cpt);
   } else {
+    // TODO: validate if all combinations are present and improve the
+    // 'throws when node has parents and cpt is not valid' test.
+
     if (!Array.isArray(node.cpt)) {
       throw new Error('You must set the probabilities of all states of this node giving the combinations of its parents states.');
     }
-
-    // TODO: validate if all combinations are present and improve the
-    // 'throws when node has parents and cpt is not valid' test.
 
     node.cpt.forEach(probs => {
       checkIfAllProbabilitiesArePresent(node.states, probs.then);
