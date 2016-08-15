@@ -1,3 +1,6 @@
 {
-  "extends": "fhelwanger/es6"
+  "extends": "fhelwanger/es6",
+  "parserOptions": {
+    "sourceType": "module"
+  }
 }
