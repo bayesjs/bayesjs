@@ -1,4 +1,7 @@
 {
-  "presets": [ "es2015" ],
-  "plugins": [ "transform-object-rest-spread" ]
+  "presets": [ "latest" ],
+  "plugins": [
+    "transform-flow-strip-types",
+    "transform-object-rest-spread"
+  ]
 }

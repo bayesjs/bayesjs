@@ -1,11 +1,38 @@
+// @flow
+
 import equal from 'deep-equal';
 
-// TODO: jsdoc all this
-export const infer = (network, nodes, giving) => {
-  const joint = buildJointDistribution(network);
+type CptWithoutParents = {
+  [key: string]: number
+};
 
-  let filteredJoint = filterJointDistribution(joint, nodes);
-  let probGiving = 1;
+type CptWithParentsItem = {
+  when: { [key: string]: string },
+  then: { [key: string]: number }
+};
+
+type CptWithParents = CptWithParentsItem[];
+
+type Node = {
+  id: string,
+  states: string[],
+  parents: string[],
+  cpt: CptWithoutParents | CptWithParents
+};
+
+type Network = {
+  [key: string]: Node
+};
+
+type Combinations = {
+  [key: string]: string
+};
+
+export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
+  const joint: Combinations[] = buildJointDistribution(network);
+
+  let filteredJoint: Combinations[] = filterJointDistribution(joint, nodes);
+  let probGiving: number = 1;
 
   if (giving) {
     filteredJoint = filterJointDistribution(filteredJoint, giving);
@@ -13,19 +40,23 @@ export const infer = (network, nodes, giving) => {
   }
 
   return calculateProbabilities(network, filteredJoint) / probGiving;
-};
+}
 
-const buildJointDistribution = network => {
-  const joint = [];
+function buildJointDistribution(network: Network): Combinations[] {
+  const joint: Combinations[] = [];
 
-  const makeCombinations = (nodes, acc = {}) => {
+  makeCombinations(Object.keys(network));
+
+  return joint;
+
+  function makeCombinations(nodes: string[], acc: Combinations = {}): void {
     if (nodes.length === 0) {
       joint.push(acc);
       return;
     }
 
-    const node = nodes[0];
-    const states = network[node].states;
+    const node: string = nodes[0];
+    const states: string[] = network[node].states;
 
     states.forEach(state => {
       makeCombinations(nodes.slice(1), {
@@ -33,41 +64,40 @@ const buildJointDistribution = network => {
         [node]: state
       });
     });
-  };
+  }
+}
 
-  makeCombinations(Object.keys(network));
+function filterJointDistribution(joint: Combinations[], nodes: Combinations): Combinations[] {
+  return joint.filter(jointRow => {
+    let remove = false;
 
-  return joint;
-};
+    Object.keys(nodes).forEach(node => {
+      if (jointRow[node] !== nodes[node]) {
+        remove = true;
+      }
+    });
 
-const filterJointDistribution = (joint, nodes) => joint.filter(jointRow => {
-  let remove = false;
-
-  Object.keys(nodes).forEach(node => {
-    if (jointRow[node] !== nodes[node]) {
-      remove = true;
-    }
+    return !remove;
   });
+}
 
-  return !remove;
-});
-
-const calculateProbabilities = (network, joint) => {
+function calculateProbabilities(network: Network, joint: Combinations[]): number {
   const prob = joint.reduce((sum, jointRow) => {
     let lineProb = 1;
 
     Object.keys(jointRow).forEach(nodeId => {
       const node = network[nodeId];
+      const cpt = (node.cpt : any);
 
       if (node.parents.length === 0) {
-        lineProb *= node.cpt[jointRow[nodeId]];
+        lineProb *= cpt[jointRow[nodeId]];
       } else {
         const when = node.parents.reduce((acc, parent) => ({
           ...acc,
           [parent]: jointRow[parent]
         }), {});
 
-        node.cpt.forEach(cptRow => {
+        cpt.forEach(cptRow => {
           if (equal(cptRow.when, when)) {
             lineProb *= cptRow.then[jointRow[nodeId]];
           }
@@ -79,4 +109,4 @@ const calculateProbabilities = (network, joint) => {
   }, 0);
 
   return prob;
-};
+}
