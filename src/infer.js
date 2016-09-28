@@ -29,84 +29,104 @@ type Combinations = {
 };
 
 export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
-  const joint: Combinations[] = buildJointDistribution(network);
+  const combinations: Combinations[] = buildCombinations(network);
 
-  let filteredJoint: Combinations[] = filterJointDistribution(joint, nodes);
+  let filteredCombinations: Combinations[] = filterCombinations(combinations, nodes);
   let probGiving: number = 1;
 
   if (giving) {
-    filteredJoint = filterJointDistribution(filteredJoint, giving);
+    filteredCombinations = filterCombinations(filteredCombinations, giving);
     probGiving = infer(network, giving);
   }
 
-  return calculateProbabilities(network, filteredJoint) / probGiving;
+  return calculateProbabilities(network, filteredCombinations) / probGiving;
 }
 
-function buildJointDistribution(network: Network): Combinations[] {
-  const joint: Combinations[] = [];
+function buildCombinations(network: Network): Combinations[] {
+  const combinations: Combinations[] = [];
 
   makeCombinations(Object.keys(network));
 
-  return joint;
+  return combinations;
 
   function makeCombinations(nodes: string[], acc: Combinations = {}): void {
     if (nodes.length === 0) {
-      joint.push(acc);
+      combinations.push(acc);
       return;
     }
 
-    const node: string = nodes[0];
+    const [ node: string, ...rest: string[] ] = nodes;
     const states: string[] = network[node].states;
 
-    states.forEach(state => {
-      makeCombinations(nodes.slice(1), {
+    for (let i = 0; i < states.length; i++) {
+      const state: string = states[i];
+
+      makeCombinations(rest, {
         ...acc,
         [node]: state
       });
-    });
+    }
   }
 }
 
-function filterJointDistribution(joint: Combinations[], nodes: Combinations): Combinations[] {
-  return joint.filter(jointRow => {
-    let remove = false;
+function filterCombinations(combinations: Combinations[], nodesToFilter: Combinations): Combinations[] {
+  const idsToFilter = Object.keys(nodesToFilter);
 
-    Object.keys(nodes).forEach(node => {
-      if (jointRow[node] !== nodes[node]) {
-        remove = true;
+  return combinations.filter(row => {
+    for (let i = 0; i < idsToFilter.length; i++) {
+      const idToFilter = idsToFilter[i];
+
+      if (row[idToFilter] !== nodesToFilter[idToFilter]) {
+        return false;
       }
-    });
+    }
 
-    return !remove;
+    return true;
   });
 }
 
-function calculateProbabilities(network: Network, joint: Combinations[]): number {
-  const prob = joint.reduce((sum, jointRow) => {
-    let lineProb = 1;
+function calculateProbabilities(network: Network, combinations: Combinations[]): number {
+  const rowsProducts: number[] = [];
 
-    Object.keys(jointRow).forEach(nodeId => {
+  for (let i = 0; i < combinations.length; i++) {
+    let rowProduct = 1;
+
+    const row = combinations[i];
+    const ids = Object.keys(row);
+
+    for (let j = 0; j < ids.length; j++) {
+      const nodeId = ids[j];
       const node = network[nodeId];
       const cpt = (node.cpt : any);
 
       if (node.parents.length === 0) {
-        lineProb *= cpt[jointRow[nodeId]];
+        rowProduct *= cpt[row[nodeId]];
       } else {
-        const when = node.parents.reduce((acc, parent) => ({
-          ...acc,
-          [parent]: jointRow[parent]
-        }), {});
+        const when = {};
 
-        cpt.forEach(cptRow => {
+        for (let k = 0; k < node.parents.length; k++) {
+          const parent = node.parents[k];
+          when[parent] = row[parent];
+        }
+
+        for (let k = 0; k < cpt.length; k++) {
+          const cptRow = cpt[k];
           if (equal(cptRow.when, when)) {
-            lineProb *= cptRow.then[jointRow[nodeId]];
+            rowProduct *= cptRow.then[row[nodeId]];
+            break;
           }
-        });
+        }
       }
-    });
+    }
 
-    return sum + lineProb;
-  }, 0);
+    rowsProducts.push(rowProduct);
+  }
 
-  return prob;
+  let probability = 0;
+
+  for (let i = 0; i < rowsProducts.length; i++) {
+    probability += rowsProducts[i];
+  }
+
+  return probability;
 }
