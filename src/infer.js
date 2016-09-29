@@ -28,8 +28,15 @@ type Combinations = {
   [key: string]: string
 };
 
+const combinationsCache = new WeakMap();
+
 export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
-  const combinations: Combinations[] = buildCombinations(network);
+  let combinations: Combinations[] = combinationsCache.get(network);
+
+  if (combinations === undefined) {
+    combinations = buildCombinations(network);
+    combinationsCache.set(network, combinations);
+  }
 
   let filteredCombinations: Combinations[] = filterCombinations(combinations, nodes);
   let probGiving: number = 1;
