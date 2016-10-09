@@ -3,10 +3,14 @@
   "version": "0.2.0",
   "description": "Inference on Bayesian Networks",
   "main": "dist/bayes.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "webpack",
+    "build": "webpack -p",
+    "watch": "webpack -w",
     "lint": "eslint . && flow",
-    "test": "npm run lint && mocha --compilers js:babel-core/register test/*js"
+    "test": "mocha --compilers js:babel-core/register test/*js"
   },
   "repository": {
     "type": "git",
