@@ -1,6 +1,6 @@
 {
   "name": "bayesjs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Inference on Bayesian Networks",
   "main": "dist/bayes.js",
   "files": [
