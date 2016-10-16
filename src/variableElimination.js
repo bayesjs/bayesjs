@@ -65,9 +65,11 @@ export function infer(network: Network, nodes: Combinations, giving: ?Combinatio
     factors.push(resultFactor);
   }
 
-  const joinedFactors = factors.reduce((f1, f2) => {
-    return joinFactors(f1, f2);
-  });
+  const joinedFactors = factors
+    .filter(factor => Object.keys(factor[0].states).length > 0)
+    .reduce((f1, f2) => {
+      return joinFactors(f1, f2);
+    });
 
   const inferenceRow = joinedFactors.find(row => {
     return variablesToInfer.every(v => row.states[v] === nodesToInfer[v]);
@@ -137,11 +139,11 @@ function joinFactors(f1: Factor, f2: Factor): Factor {
     }
   }
 
+  const nodeIdsF1 = Object.keys(f1[0].states);
+  const nodeIdsF2 = Object.keys(f2[0].states);
+
   for (let i = 0; i < newFactor.length; i++) {
     const rowNewFactor = newFactor[i];
-
-    const nodeIdsF1 = Object.keys(f1[0].states);
-    const nodeIdsF2 = Object.keys(f2[0].states);
 
     const rowF1 = f1.find(x => {
       return nodeIdsF1.every(nodeId => x.states[nodeId] === rowNewFactor.states[nodeId]);
