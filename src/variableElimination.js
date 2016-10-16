@@ -67,6 +67,7 @@ export function infer(network: Network, nodes: Combinations, giving: ?Combinatio
 
   const joinedFactors = factors
     .filter(factor => Object.keys(factor[0].states).length > 0)
+    .sort((f1, f2) => f1.length - f2.length)
     .reduce((f1, f2) => {
       return joinFactors(f1, f2);
     });
