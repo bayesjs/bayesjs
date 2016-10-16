@@ -34,17 +34,15 @@ type FactorItem = {
 type Factor = FactorItem[];
 
 export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
-  const nodesToInfer = giving ? (
-    { ...nodes, ...giving }
-  ) : (
-    nodes
-  );
-
   const variables = Object.keys(network);
-  const variablesToInfer = Object.keys(nodesToInfer);
-  const variablesToEliminate = variables.filter(x => !variablesToInfer.some(y => y === x));
+  const variablesToInfer = Object.keys(nodes);
+  const variablesGiving = giving ? Object.keys(giving) : [];
 
-  const factors = variables.map(nodeId => buildFactor(network[nodeId]));
+  const variablesToEliminate = variables
+    .filter(x => !variablesToInfer.some(y => y === x) && !variablesGiving.some(y => y === x));
+
+  const factors = variables
+    .map(nodeId => buildFactor(network[nodeId], giving));
 
   while (variablesToEliminate.length > 0) {
     const varToEliminate = variablesToEliminate.shift();
@@ -65,31 +63,27 @@ export function infer(network: Network, nodes: Combinations, giving: ?Combinatio
     factors.push(resultFactor);
   }
 
-  const joinedFactors = factors
+  const joinedFactor = factors
     .filter(factor => Object.keys(factor[0].states).length > 0)
     .sort((f1, f2) => f1.length - f2.length)
     .reduce((f1, f2) => {
       return joinFactors(f1, f2);
     });
 
-  const inferenceRow = joinedFactors.find(row => {
-    return variablesToInfer.every(v => row.states[v] === nodesToInfer[v]);
+  const normalizedFactor = normalizeFactor(joinedFactor);
+
+  const inferenceRow = normalizedFactor.find(row => {
+    return variablesToInfer.every(v => row.states[v] === nodes[v]);
   });
 
   if (inferenceRow === undefined) {
-    throw new Error('Fatal error');
+    return 0;
   }
 
-  const probGiving = giving ? (
-    infer(network, giving)
-  ) : (
-    1
-  );
-
-  return inferenceRow.value / probGiving;
+  return inferenceRow.value;
 }
 
-function buildFactor(node: Node): Factor {
+function buildFactor(node: Node, giving: ?Combinations): Factor {
   const factor = [];
   const cpt = (node.cpt : any);
 
@@ -111,6 +105,21 @@ function buildFactor(node: Node): Factor {
           states: { ...cpt[i].when, [node.id]: state },
           value: cpt[i].then[state]
         });
+      }
+    }
+  }
+
+  if (giving) {
+    const givingIds = Object.keys(giving);
+
+    for (let i = factor.length - 1; i >= 0; i--) {
+      for (let j = 0; j < givingIds.length; j++) {
+        const givingId = givingIds[j];
+
+        if (factor[i].states[givingId] && factor[i].states[givingId] !== giving[givingId]) {
+          factor.splice(i, 1);
+          break;
+        }
       }
     }
   }
@@ -189,4 +198,18 @@ function eliminateVariable(factor: Factor, variable: string): Factor {
   }
 
   return newFactor;
+}
+
+function normalizeFactor(factor: Factor): Factor {
+  const total = factor.reduce((acc, row) => acc + row.value, 0);
+
+  if (total === 0) {
+    return factor;
+  }
+
+  return factor
+    .map(row => ({
+      states: { ...row.states },
+      value: row.value / total
+    }));
 }
