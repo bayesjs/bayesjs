@@ -1,0 +1,45 @@
+export const burglary = {
+  id: 'BURGLARY',
+  states: [ 'T', 'F' ],
+  parents: [],
+  cpt: { 'T': 0.001, 'F': 0.999 }
+};
+
+export const earthquake = {
+  id: 'EARTHQUAKE',
+  states: [ 'T', 'F' ],
+  parents: [],
+  cpt: { 'T': 0.002, 'F': 0.998 }
+};
+
+export const alarm = {
+  id: 'ALARM',
+  states: [ 'T', 'F' ],
+  parents: [ 'BURGLARY', 'EARTHQUAKE' ],
+  cpt: [
+    { when: { 'BURGLARY': 'T', 'EARTHQUAKE': 'T' }, then: { 'T': 0.95, 'F': 0.05 } },
+    { when: { 'BURGLARY': 'T', 'EARTHQUAKE': 'F' }, then: { 'T': 0.94, 'F': 0.06 } },
+    { when: { 'BURGLARY': 'F', 'EARTHQUAKE': 'T' }, then: { 'T': 0.29, 'F': 0.71 } },
+    { when: { 'BURGLARY': 'F', 'EARTHQUAKE': 'F' }, then: { 'T': 0.001, 'F': 0.999 } }
+  ]
+};
+
+export const johnCalls = {
+  id: 'JOHN_CALLS',
+  states: [ 'T', 'F' ],
+  parents: [ 'ALARM' ],
+  cpt: [
+    { when: { 'ALARM': 'T' }, then: { 'T': 0.9, 'F': 0.1 } },
+    { when: { 'ALARM': 'F' }, then: { 'T': 0.05, 'F': 0.95 } }
+  ]
+};
+
+export const maryCalls = {
+  id: 'MARY_CALLS',
+  states: [ 'T', 'F' ],
+  parents: [ 'ALARM' ],
+  cpt: [
+    { when: { 'ALARM': 'T' }, then: { 'T': 0.7, 'F': 0.3 } },
+    { when: { 'ALARM': 'F' }, then: { 'T': 0.01, 'F': 0.99 } }
+  ]
+};
