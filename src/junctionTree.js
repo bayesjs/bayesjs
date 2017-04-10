@@ -1,60 +1,259 @@
 import isEqual from 'lodash/isequal';
 
-// export function infer(network, nodes, given) {
-export function infer(_, __, ___) {
-  const network = {
-    B: {
-      id: 'B',
-      parents: []
-    },
-    E: {
-      id: 'E',
-      parents: []
-    },
-    A: {
-      id: 'A',
-      parents: [ 'B', 'E' ]
-    },
-    J: {
-      id: 'J',
-      parents: [ 'A' ]
-    },
-    M: {
-      id: 'M',
-      parents: [ 'A' ]
+const cliquesCache = new WeakMap();
+
+export function infer(network, nodes, given) {
+  let cliques = cliquesCache.get(network);
+
+  if (cliques === undefined) {
+    cliques = buildCliques(network);
+    cliquesCache.set(network, cliques);
+  }
+
+  const nodesToInfer = Object.keys(nodes);
+
+  // TODO: considerar P(A,B,C), por enquanto só P(A)
+  const nodeToInfer = nodesToInfer[0];
+
+  const clique = cliques.find(x => x.clique.some(y => y === nodeToInfer));
+
+  const result = clique.potentials
+    .filter(x => x.when[nodeToInfer] === nodes[nodeToInfer])
+    .map(x => x.then)
+    .reduce((acc, x) => acc + x);
+
+  return result;
+}
+
+const buildCliques = network => {
+  const moralGraph = buildMoralGraph(network);
+  // console.log('MORAL GRAPH');
+  // moralGraph.print();
+  // console.log();
+
+  const triangulatedGraph = buildTriangulatedGraph(moralGraph);
+  // console.log('TRIANGULATED GRAPH');
+  // triangulatedGraph.print();
+  // console.log();
+
+  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph);
+  // console.log('CLIQUE GRAPH');
+  // cliqueGraph.print();
+  // console.log('cliques');
+  // console.dir(cliques);
+  // console.log('sepSets');
+  // console.dir(sepSets);
+  // console.log();
+
+  const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
+  // console.log('JUNCTION TREE');
+  // junctionTree.print();
+  // console.log('cliques');
+  // console.dir(cliques);
+  // console.log('sepSets');
+  // console.dir(sepSets);
+  // console.log();
+
+  initializePotentials(cliques, network);
+  // console.log('initialized cliques');
+  // console.dir(cliques);
+  // console.log();
+
+  globalPropagation(network, junctionTree, cliques, sepSets);
+  // console.log('propagated cliques');
+  // console.dir(cliques);
+  // console.log();
+
+  return cliques;
+};
+
+const globalPropagation = (network, junctionTree, cliques, sepSets) => {
+  let marked = [];
+
+  const unmarkAll = () => {
+    marked = [];
+  };
+
+  const isMarked = id => {
+    return marked.some(x => x === id);
+  };
+
+  const mark = id => {
+    marked.push(id);
+  };
+
+  const collectEvidence = (id, parentId = null) => {
+    mark(id);
+
+    const neighbors = junctionTree.getNeighborsOf(id)
+      .filter(x => !isMarked(x));
+
+    for (const neighbor of neighbors) {
+      collectEvidence(neighbor, id);
+    }
+
+    if (parentId !== null) {
+      const sepSet = sepSets.find(x => {
+        return (x.ca === parentId && x.cb === id) || (x.ca === id && x.cb === parentId);
+      }).sharedNodes;
+
+      const potentials = cliques.find(x => x.id === id).potentials;
+
+      const message = buildCombinations(network, sepSet)
+        .map(x => ({ when: x, then: 0 }));
+
+      for (const row of message) {
+        row.then = potentials
+          .filter(potential => {
+            return Object.keys(row.when).every(x => row.when[x] === potential.when[x]);
+          })
+          .map(x => x.then)
+          .reduce((acc, x) => acc + x);
+      }
+
+      const parent = cliques.find(x => x.id === parentId);
+
+      parent.oldPotentials = parent.potentials.map(x => ({ when: x.when, then: x.then }));
+
+      for (const row of message) {
+        parent.potentials
+          .filter(potential => {
+            return Object.keys(row.when).every(x => row.when[x] === potential.when[x]);
+          })
+          .forEach(potential => {
+            potential.then *= row.then;
+          });
+      }
     }
   };
 
-  const moralGraph = buildMoralGraph(network);
-  console.log('MORAL GRAPH');
-  moralGraph.print();
-  console.log();
+  const distributeEvidence = id => {
+    mark(id);
 
-  const triangulatedGraph = buildTriangulatedGraph(moralGraph);
-  console.log('TRIANGULATED GRAPH');
-  triangulatedGraph.print();
-  console.log();
+    const clique = cliques.find(x => x.id === id);
+    const potentials = clique.oldPotentials;
 
-  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph);
-  console.log('CLIQUE GRAPH');
-  cliqueGraph.print();
-  console.log('cliques');
-  console.dir(cliques);
-  console.log('sepSets');
-  console.dir(sepSets);
-  console.log();
+    delete clique.oldPotentials;
 
-  const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
-  console.log('JUNCTION TREE');
-  junctionTree.print();
-  console.log('cliques');
-  console.dir(cliques);
-  console.log('sepSets');
-  console.dir(sepSets);
-  console.log();
+    const neighbors = junctionTree.getNeighborsOf(id)
+      .filter(x => !isMarked(x));
 
-  return 0;
-}
+    for (const neighborId of neighbors) {
+      const sepSet = sepSets.find(x => {
+        return (x.ca === neighborId && x.cb === id) || (x.ca === id && x.cb === neighborId);
+      }).sharedNodes;
+
+      const message = buildCombinations(network, sepSet)
+        .map(x => ({ when: x, then: 0 }));
+
+      for (const row of message) {
+        row.then = potentials
+          .filter(potential => {
+            return Object.keys(row.when).every(x => row.when[x] === potential.when[x]);
+          })
+          .map(x => x.then)
+          .reduce((acc, x) => acc + x);
+      }
+
+      const neighbor = cliques.find(x => x.id === neighborId);
+
+      for (const row of message) {
+        neighbor.potentials
+          .filter(potential => {
+            return Object.keys(row.when).every(x => row.when[x] === potential.when[x]);
+          })
+          .forEach(potential => {
+            potential.then *= row.then;
+          });
+      }
+    }
+
+    for (const neighbor of neighbors) {
+      distributeEvidence(neighbor);
+    }
+  };
+
+  const root = junctionTree.getNodes()[0];
+
+  unmarkAll();
+  collectEvidence(root);
+
+  unmarkAll();
+  distributeEvidence(root);
+};
+
+const initializePotentials = (cliques, network) => {
+  for (const clique of cliques) {
+    clique.factors = [];
+    clique.potentials = [];
+  }
+
+  for (const nodeId of Object.keys(network)) {
+    const node = network[nodeId];
+    const nodes = node.parents.concat(node.id);
+
+    for (const clique of cliques) {
+      if (nodes.every(x => clique.clique.some(y => x === y))) {
+        clique.factors.push(nodeId);
+      }
+    }
+  }
+
+  for (const clique of cliques) {
+    const combinations = buildCombinations(network, clique.clique);
+
+    for (const combination of combinations) {
+      let value = 1;
+
+      for (const factorId of clique.factors) {
+        const factor = network[factorId];
+
+        if (factor.parents.length > 0) {
+          const when = network[factorId].parents
+            .reduce((acc, x) => ({ ...acc, [x]: combination[x] }), {});
+
+          const cptRow = factor.cpt.find(x => isEqual(x.when, when));
+
+          value *= cptRow.then[combination[factorId]];
+        } else {
+          value *= factor.cpt[combination[factorId]];
+        }
+      }
+
+      clique.potentials.push({
+        when: combination,
+        then: value
+      });
+    }
+
+    delete clique.factors;
+  }
+};
+
+const buildCombinations = (network, nodesToCombine) => {
+  const combinations = [];
+
+  const makeCombinations = (nodes, acc = {}) => {
+    if (nodes.length === 0) {
+      combinations.push(acc);
+      return;
+    }
+
+    const [ nodeId, ...rest ] = nodes;
+    const states = network[nodeId].states;
+
+    for (const state of states) {
+      makeCombinations(rest, {
+        ...acc,
+        [nodeId]: state
+      });
+    }
+  };
+
+  makeCombinations(nodesToCombine);
+
+  return combinations;
+};
 
 const buildJunctionTree = (cliqueGraph, cliques, sepSets) => {
   sepSets.sort((a, b) => b.sharedNodes.length - a.sharedNodes.length);
