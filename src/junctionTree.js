@@ -6,11 +6,26 @@ export function infer(network, nodes, given) {
   let cliques = cliquesCache.get(network);
 
   if (cliques === undefined) {
-    cliques = buildCliques(network);
+    cliques = buildCliques(network, given);
     cliquesCache.set(network, cliques);
   }
 
   const nodesToInfer = Object.keys(nodes);
+
+  for (let test of nodesToInfer) {
+    (function() {
+      const nodeToInfer = test;
+
+      const clique = cliques.find(x => x.clique.some(y => y === nodeToInfer));
+
+      const result = clique.potentials
+        .filter(x => x.when[nodeToInfer] === nodes[nodeToInfer])
+        .map(x => x.then)
+        .reduce((acc, x) => acc + x);
+      
+      // console.log('nodeToInfer', nodeToInfer, result);
+    })();
+  }
 
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodeToInfer = nodesToInfer[0];
@@ -21,11 +36,12 @@ export function infer(network, nodes, given) {
     .filter(x => x.when[nodeToInfer] === nodes[nodeToInfer])
     .map(x => x.then)
     .reduce((acc, x) => acc + x);
-
+  
   return result;
 }
 
-const buildCliques = network => {
+const buildCliques = (network, given) => {
+  const originalNetwork = {...network};
   const moralGraph = buildMoralGraph(network);
   // console.log('MORAL GRAPH');
   // moralGraph.print();
@@ -35,8 +51,17 @@ const buildCliques = network => {
   // console.log('TRIANGULATED GRAPH');
   // triangulatedGraph.print();
   // console.log();
-
-  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph);
+  // triangulatedGraph.print();
+  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, originalNetwork);
+  console.log('cliques', cliques);
+  console.log(
+    cliques.map(({clique}) => {
+      return clique.map(v => {
+        if (v.indexOf('--') === -1) return v;
+        return v.split('--')[1];
+      }).join('|')
+    }).join('\n')
+  );
   // console.log('CLIQUE GRAPH');
   // cliqueGraph.print();
   // console.log('cliques');
@@ -54,7 +79,7 @@ const buildCliques = network => {
   // console.dir(sepSets);
   // console.log();
 
-  initializePotentials(cliques, network);
+  initializePotentials(cliques, network, given);
   // console.log('initialized cliques');
   // console.dir(cliques);
   // console.log();
@@ -96,7 +121,6 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
       const sepSet = sepSets.find(x => {
         return (x.ca === parentId && x.cb === id) || (x.ca === id && x.cb === parentId);
       }).sharedNodes;
-
       const potentials = cliques.find(x => x.id === id).potentials;
 
       const message = buildCombinations(network, sepSet)
@@ -110,11 +134,11 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
           .map(x => x.then)
           .reduce((acc, x) => acc + x);
       }
-
+      
       const parent = cliques.find(x => x.id === parentId);
 
       parent.oldPotentials = parent.potentials.map(x => ({ when: x.when, then: x.then }));
-
+      
       for (const row of message) {
         parent.potentials
           .filter(potential => {
@@ -132,6 +156,7 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
 
     const clique = cliques.find(x => x.id === id);
     const potentials = clique.oldPotentials;
+    console.log('potentials',potentials);
 
     delete clique.oldPotentials;
 
@@ -173,16 +198,40 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
     }
   };
 
-  const root = junctionTree.getNodes()[0];
+  const nodes = junctionTree.getNodes();
+  const root = nodes[0];
+  // const root = nodes[nodes.length - 1];
+
+  // console.log('root', junctionTree.getNodes());
 
   unmarkAll();
   collectEvidence(root);
 
   unmarkAll();
   distributeEvidence(root);
+
+  console.log('final', cliques);
 };
 
-const initializePotentials = (cliques, network) => {
+const initializePotentials = (cliques, network, given) => {
+  const getInitalValue = (comb) => {
+    if (given) {
+      const givenKeys = Object.keys(given);
+      const combKeys = Object.keys(comb);
+      const inter = intersection_destructive(givenKeys, combKeys);
+      
+      if (combKeys.length) {
+        const all = inter.every(gk => {
+          return comb[gk] == given[gk];
+        });
+        
+        return all ? 1 : 0;
+      }
+    }
+    return 1;
+  }
+
+  console.log('given',given);
   for (const clique of cliques) {
     clique.factors = [];
     clique.potentials = [];
@@ -195,15 +244,21 @@ const initializePotentials = (cliques, network) => {
     for (const clique of cliques) {
       if (nodes.every(x => clique.clique.some(y => x === y))) {
         clique.factors.push(nodeId);
+        //break?
       }
     }
   }
 
   for (const clique of cliques) {
+    // console.log(clique.clique);
     const combinations = buildCombinations(network, clique.clique);
+    // console.log('clique', clique, combinations);
 
     for (const combination of combinations) {
+      const init = getInitalValue(combination);
+      // let value = 1;
       let value = 1;
+      // console.log('getInitalValue',value);
 
       for (const factorId of clique.factors) {
         const factor = network[factorId];
@@ -219,6 +274,13 @@ const initializePotentials = (cliques, network) => {
           value *= factor.cpt[combination[factorId]];
         }
       }
+      
+      if (init == 0) {
+        clique.lost = (clique.lost || 0) + value;
+        value = 0;
+      }
+
+      console.log(combination, value, init);
 
       clique.potentials.push({
         when: combination,
@@ -226,8 +288,27 @@ const initializePotentials = (cliques, network) => {
       });
     }
 
+    const sum = clique.potentials.reduce((acc, { then }) => acc + then, 0);
+    console.log('SUM', sum, "LOST", clique.lost);
+
+    // if (clique.lost != undefined) {
+    //   for (let potential of clique.potentials) {
+    //     console.log('potential', potential);
+    //     potential.then = (potential.then)/(sum );
+    //   }
+    // }
+
+    // if ((sum * 100) < 99 && sum <= 1) {
+    //   for (let potential of clique.potentials) {
+    //     console.log('potential', potential);
+    //     potential.then = (potential.then)/sum;
+    //   }
+    // }
+
     delete clique.factors;
+    // console.log('clique', clique.potentials);
   }
+
 };
 
 const buildCombinations = (network, nodesToCombine) => {
@@ -326,7 +407,16 @@ const buildJunctionTree = (cliqueGraph, cliques, sepSets) => {
   return junctionTree;
 };
 
-const buildCliqueGraph = triangulatedGraph => {
+const intersection_destructive = (listA, listB) => {
+  // console.log(listA, listB);
+  let a = new Set(listA);
+  let b = new Set(listB);
+  let intersection = new Set([...a].filter(x => b.has(x)));
+
+  return [...intersection];
+}
+
+const buildCliqueGraph = (triangulatedGraph, net) => {
   const cliqueGraph = createGraph();
 
   const cliques = [];
@@ -336,9 +426,9 @@ const buildCliqueGraph = triangulatedGraph => {
     const clique = [ nodes[i] ];
 
     for (let j = 0; j < nodes.length; j++) {
-      if (i === j) {
-        continue;
-      }
+      if (i === j) continue;
+      // else if (intersection_destructive(net[nodes[i]].network, net[nodes[j]].network).length > 0) continue;
+      // else if (net[nodes[i]].network !== net[nodes[j]].network) continue;
 
       if (clique.every(node => triangulatedGraph.areConnected(node, nodes[j]))) {
         clique.push(nodes[j]);
@@ -390,25 +480,37 @@ const buildCliqueGraph = triangulatedGraph => {
 const buildTriangulatedGraph = moralGraph => {
   const triangulatedGraph = moralGraph.clone();
   const clonedGraph = triangulatedGraph.clone();
+  const nodes = clonedGraph.getNodes();
+  const nodesToRemove = [ ...nodes ];
 
-  const nodesToRemove = clonedGraph.getNodes()
-    .map(node => {
-      return {
-        node,
-        neighbors: clonedGraph.getNeighborsOf(node)
-      };
-    })
-    .sort((a, b) => {
-      return a.neighbors.length - b.neighbors.length;
-    });
+  const findLessNeighbors = () => {
+    if (nodesToRemove.length == 1) return nodesToRemove.shift();
+    let index = 0;
+    let candidateNeighbors = clonedGraph.getNeighborsOf(nodesToRemove[index]);
+
+    for (let i = 1; i < nodesToRemove.length; i++) {
+      const node = nodesToRemove[i];
+      const neighbors = clonedGraph.getNeighborsOf(node);
+
+      if (neighbors.length < candidateNeighbors.length) {
+        index = i;
+        candidateNeighbors = neighbors;
+      }
+    }
+
+    const node = nodesToRemove[index];
+    nodesToRemove.splice(index, 1);
+    return node;
+  };
 
   while (nodesToRemove.length > 0) {
-    const nodeToRemove = nodesToRemove.shift();
-
-    for (let i = 0; i < nodeToRemove.neighbors.length; i++) {
-      for (let j = i + 1; j < nodeToRemove.neighbors.length; j++) {
-        const neighborA = nodeToRemove.neighbors[i];
-        const neighborB = nodeToRemove.neighbors[j];
+    const nodeToRemove = findLessNeighbors();
+    const neighbors = clonedGraph.getNeighborsOf(nodeToRemove).filter(id => nodesToRemove.indexOf(id) > -1);
+    
+    for (let i = 0; i < neighbors.length; i++) {
+      for (let j = i + 1; j < neighbors.length; j++) {
+        const neighborA = neighbors[i];
+        const neighborB = neighbors[j];
 
         if (!clonedGraph.containsNode(neighborA) || !clonedGraph.containsNode(neighborB)) {
           continue;

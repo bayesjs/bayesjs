@@ -2,6 +2,8 @@ import expect from 'expect';
 import { addNode } from '../src/index';
 import { rain, sprinkler, grassWet } from '../models/rain-sprinkler-grasswet';
 
+import { infer } from "../src/junctionTree";
+
 describe('addNode', () => {
   it('adds node', () => {
     const network = addNode({}, rain);

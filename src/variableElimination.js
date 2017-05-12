@@ -33,6 +33,7 @@ type FactorItem = {
 
 type Factor = FactorItem[];
 
+
 export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
   const variables = Object.keys(network);
   const variablesToInfer = Object.keys(nodes);
