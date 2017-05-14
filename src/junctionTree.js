@@ -1,5 +1,33 @@
 import isEqual from 'lodash/isequal';
 
+const enableLog = false;
+
+const log = (...args) => {
+  if (!enableLog) return;
+  console.log(...args);
+};
+
+const logTable = (arg) => {
+  if (!enableLog) return;
+  console.table(arg);
+};
+
+const logTableCliques = (cliques) => {
+  if (!enableLog) return;
+  for (let clique of cliques) {
+    logTable(
+        clique.potentials.map(({ when, then }) => {
+        let obj = { then };
+
+        for (let key of Object.keys(when)) {
+          obj[key] = when[key];
+        }
+        return obj;
+      })
+    );
+  }
+}
+
 const cliquesCache = new WeakMap();
 
 export function infer(network, nodes, given) {
@@ -11,21 +39,6 @@ export function infer(network, nodes, given) {
   }
 
   const nodesToInfer = Object.keys(nodes);
-
-  for (let test of nodesToInfer) {
-    (function() {
-      const nodeToInfer = test;
-
-      const clique = cliques.find(x => x.clique.some(y => y === nodeToInfer));
-
-      const result = clique.potentials
-        .filter(x => x.when[nodeToInfer] === nodes[nodeToInfer])
-        .map(x => x.then)
-        .reduce((acc, x) => acc + x);
-      
-      // console.log('nodeToInfer', nodeToInfer, result);
-    })();
-  }
 
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodeToInfer = nodesToInfer[0];
@@ -40,21 +53,45 @@ export function infer(network, nodes, given) {
   return result;
 }
 
+const normalize = (cliques) => {
+  for (let clique of cliques) {
+    const { potentials } = clique;
+    let sum = 0;
+    let hasEvidence = false;
+
+    for (let potential of potentials) {
+      const { then } = potential;
+
+      if (then == 0) hasEvidence = true;
+      sum += then;
+    }
+
+    if ((Math.round(sum * 100) < 100) || (Math.round(sum * 100) > 100)) { // Math.round cause 1.0000000000002 (example)
+      for (let potential of potentials) {
+        potential.then = potential.then / sum;
+      }
+    }
+
+    log('SUM', sum, potentials);
+  }
+};
+
 const buildCliques = (network, given) => {
   const originalNetwork = {...network};
   const moralGraph = buildMoralGraph(network);
-  // console.log('MORAL GRAPH');
+  // log('MORAL GRAPH');
   // moralGraph.print();
-  // console.log();
+  // log();
 
   const triangulatedGraph = buildTriangulatedGraph(moralGraph);
-  // console.log('TRIANGULATED GRAPH');
+  // log('TRIANGULATED GRAPH');
   // triangulatedGraph.print();
-  // console.log();
+  // log();
   // triangulatedGraph.print();
   const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, originalNetwork);
-  console.log('cliques', cliques);
-  console.log(
+  log('cliques', cliques);
+  log('*** CLIQUES ***');
+  log(
     cliques.map(({clique}) => {
       return clique.map(v => {
         if (v.indexOf('--') === -1) return v;
@@ -62,32 +99,35 @@ const buildCliques = (network, given) => {
       }).join('|')
     }).join('\n')
   );
-  // console.log('CLIQUE GRAPH');
+  log('******');
+  // log('CLIQUE GRAPH');
   // cliqueGraph.print();
-  // console.log('cliques');
+  // log('cliques');
   // console.dir(cliques);
-  // console.log('sepSets');
+  // log('sepSets');
   // console.dir(sepSets);
-  // console.log();
+  // log();
 
   const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
-  // console.log('JUNCTION TREE');
+  // log('JUNCTION TREE');
   // junctionTree.print();
-  // console.log('cliques');
+  // log('cliques');
   // console.dir(cliques);
-  // console.log('sepSets');
+  // log('sepSets');
   // console.dir(sepSets);
-  // console.log();
+  // log();
 
   initializePotentials(cliques, network, given);
-  // console.log('initialized cliques');
+  // log('initialized cliques');
   // console.dir(cliques);
-  // console.log();
+  // log();
 
   globalPropagation(network, junctionTree, cliques, sepSets);
-  // console.log('propagated cliques');
+  // log('propagated cliques');
   // console.dir(cliques);
-  // console.log();
+  // log();
+
+  normalize(cliques);
 
   return cliques;
 };
@@ -118,10 +158,13 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
     }
 
     if (parentId !== null) {
+      const clique = cliques.find(x => x.id === id);
       const sepSet = sepSets.find(x => {
         return (x.ca === parentId && x.cb === id) || (x.ca === id && x.cb === parentId);
       }).sharedNodes;
-      const potentials = cliques.find(x => x.id === id).potentials;
+      const potentials = clique.potentials;
+
+      log('start collectEvidence for clique', clique.clique.join('|'));
 
       const message = buildCombinations(network, sepSet)
         .map(x => ({ when: x, then: 0 }));
@@ -135,6 +178,8 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
           .reduce((acc, x) => acc + x);
       }
       
+      log('send message: ', message, sepSet);
+
       const parent = cliques.find(x => x.id === parentId);
 
       parent.oldPotentials = parent.potentials.map(x => ({ when: x.when, then: x.then }));
@@ -148,6 +193,8 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
             potential.then *= row.then;
           });
       }
+
+      log('end collectEvidence for clique', clique.clique.join('|'));
     }
   };
 
@@ -156,13 +203,13 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
 
     const clique = cliques.find(x => x.id === id);
     const potentials = clique.oldPotentials;
-    console.log('potentials',potentials);
+    log('start distributeEvidence for clique', clique.clique.join('|'));
 
     delete clique.oldPotentials;
 
     const neighbors = junctionTree.getNeighborsOf(id)
       .filter(x => !isMarked(x));
-
+    
     for (const neighborId of neighbors) {
       const sepSet = sepSets.find(x => {
         return (x.ca === neighborId && x.cb === id) || (x.ca === id && x.cb === neighborId);
@@ -180,6 +227,13 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
           .reduce((acc, x) => acc + x);
       }
 
+      log('send message', message, sepSet);
+
+      // if (message.every(x => x.then == 1)) {if all values are 1, nothing will change after all.
+      //   log('ALL ONE');
+      //   continue;
+      // }
+
       const neighbor = cliques.find(x => x.id === neighborId);
 
       for (const row of message) {
@@ -196,24 +250,37 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
     for (const neighbor of neighbors) {
       distributeEvidence(neighbor);
     }
+
+    log('end distributeEvidence for clique', clique.clique.join('|'));
   };
 
   const nodes = junctionTree.getNodes();
   const root = nodes[0];
   // const root = nodes[nodes.length - 1];
 
-  // console.log('root', junctionTree.getNodes());
+  log('*** CLIQUE ROOT ***');
+  log(cliques.find(({ id }) => id == root).clique.join('|'));
+  log('*** CLIQUE ROOT ***');
 
   unmarkAll();
+  log('------------------------------------------');
   collectEvidence(root);
+  log('------------------------------------------');
+
+  // logTableCliques(cliques);
+  log(cliques);
 
   unmarkAll();
+  log('------------------------------------------');
   distributeEvidence(root);
+  log('------------------------------------------');
 
-  console.log('final', cliques);
+  log('FINAL CLIQUES', cliques);
+  logTableCliques(cliques);
 };
 
 const initializePotentials = (cliques, network, given) => {
+  log('given', given);
   const getInitalValue = (comb) => {
     if (given) {
       const givenKeys = Object.keys(given);
@@ -231,7 +298,6 @@ const initializePotentials = (cliques, network, given) => {
     return 1;
   }
 
-  console.log('given',given);
   for (const clique of cliques) {
     clique.factors = [];
     clique.potentials = [];
@@ -250,15 +316,13 @@ const initializePotentials = (cliques, network, given) => {
   }
 
   for (const clique of cliques) {
-    // console.log(clique.clique);
+    // log(clique.clique);
     const combinations = buildCombinations(network, clique.clique);
-    // console.log('clique', clique, combinations);
+    // log('clique', clique, combinations);
 
     for (const combination of combinations) {
       const init = getInitalValue(combination);
-      // let value = 1;
       let value = 1;
-      // console.log('getInitalValue',value);
 
       for (const factorId of clique.factors) {
         const factor = network[factorId];
@@ -280,7 +344,7 @@ const initializePotentials = (cliques, network, given) => {
         value = 0;
       }
 
-      console.log(combination, value, init);
+      log(combination, value, init);
 
       clique.potentials.push({
         when: combination,
@@ -289,24 +353,39 @@ const initializePotentials = (cliques, network, given) => {
     }
 
     const sum = clique.potentials.reduce((acc, { then }) => acc + then, 0);
-    console.log('SUM', sum, "LOST", clique.lost);
+    log('SUM', sum, "LOST", clique.lost);
+
+    // if (clique.lost != undefined) {
+    //   let { lost, potentials } = clique;
+    //   let potentialsToAdd = potentials.filter(({ then }) => then > 0);
+    //   let valueToAdd = lost / potentialsToAdd.length;
+      
+    //   log({ valueToAdd });
+    //   for (let potential of potentialsToAdd) {
+    //     let newValue = potential.then + valueToAdd;
+    //     log(`${potential.then} -> ${newValue}`);
+    //     potential.then = newValue;
+    //   }
+    //   log(potentials);
+    // }
 
     // if (clique.lost != undefined) {
     //   for (let potential of clique.potentials) {
-    //     console.log('potential', potential);
-    //     potential.then = (potential.then)/(sum );
+    //     log('potential', potential);
+    //     potential.then = (potential.then)/(sum);
+    //     log('new potential', potential);
     //   }
     // }
 
     // if ((sum * 100) < 99 && sum <= 1) {
     //   for (let potential of clique.potentials) {
-    //     console.log('potential', potential);
+    //     log('potential', potential);
     //     potential.then = (potential.then)/sum;
     //   }
     // }
 
     delete clique.factors;
-    // console.log('clique', clique.potentials);
+    // log('clique', clique.potentials);
   }
 
 };
@@ -408,7 +487,7 @@ const buildJunctionTree = (cliqueGraph, cliques, sepSets) => {
 };
 
 const intersection_destructive = (listA, listB) => {
-  // console.log(listA, listB);
+  // log(listA, listB);
   let a = new Set(listA);
   let b = new Set(listB);
   let intersection = new Set([...a].filter(x => b.has(x)));
@@ -647,9 +726,9 @@ const createGraph = () => {
     getNeighborsOf,
     clone,
     print: () => {
-      console.log('nodes');
+      log('nodes');
       console.dir(nodes);
-      console.log('edges');
+      log('edges');
       console.dir(edges);
     }
   };
