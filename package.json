@@ -38,6 +38,8 @@
     "babel-plugin-transform-flow-strip-types": "^6.14.0",
     "babel-plugin-transform-object-rest-spread": "^6.8.0",
     "babel-preset-latest": "^6.14.0",
+    "bigdecimal": "^0.6.1",
+    "deep-freeze": "0.0.1",
     "eslint": "^2.13.1",
     "eslint-config-fhelwanger": "^3.0.0",
     "expect": "^1.14.0",
