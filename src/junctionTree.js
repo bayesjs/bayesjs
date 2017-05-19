@@ -1,27 +1,26 @@
 import isEqual from 'lodash/isequal';
-import f from 'float';
+// import f from 'float';
 // import deepFreeze from 'deep-freeze';
+import clone from 'clone';
 
 const enableLog = true;
 const cliquesCache = new WeakMap();
 let rootIndex = 0;
-let useReceidedMessage = false;
 
-export function infer(network, nodes, given = {}, root = 0, useMessage = false) {
+export function infer(network, nodes, given = {}, root = 0) {
   rootIndex = root;
-  useReceidedMessage = useMessage;
   let cliques = cliquesCache.get(network);
 
   if (cliques === undefined) {
     cliques = buildCliques(network, given);
     cliquesCache.set(network, cliques);
     log('FINAL CLIQUES', cliques);
-    logTableCliques(cliques);
+    log('network', network);
+    // checkConsistency(network, cliques);
   }
-
-  const nodesToInfer = Object.keys(nodes);
   
   // TODO: considerar P(A,B,C), por enquanto só P(A)
+  const nodesToInfer = Object.keys(nodes);
   const nodeToInfer = nodesToInfer[0];
   const stateToInfer = nodes[nodeToInfer];
   const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
@@ -36,7 +35,30 @@ export function infer(network, nodes, given = {}, root = 0, useMessage = false) 
 
   const result = values.reduce((acc, x) => acc + x);
   log({ nodeToInfer, stateToInfer, values, result });
+  
   return result;
+};
+
+const checkConsistency = (network, cliques) => {
+  const dict = new Map();
+
+  for (const clique of cliques) {
+    const nodesIds = clique.clique;
+
+    for (const nodeId of nodesIds) {
+      const states = network[nodeId].states;
+      
+      for (const state of states) {
+        const key = `${clique.id}-${nodeId}-${state}`;
+        const value = clique.potentials
+          .filter(({ when }) => when[nodeId] === state)
+          .reduce((acc, { then }) => acc + then, 0);
+
+        dict.set(key, value);
+      }
+    }
+  }
+  console.log(dict);
 };
 
 const buildCliques = (oNetwork, given) => {
@@ -83,14 +105,9 @@ const buildCliques = (oNetwork, given) => {
 
   initializePotentials(cliques, network, given);
 
-  // const isOk = cliques.every(({ clique }) => {
-  //   const nodes = clique.map(nodeId => network[nodeId]);
-    
-  //   return nodes.every(node => {
-  //     if (node.parents.length == 0) return true;
-  //     return node.parents.every(parentId => clique.indexOf(parentId) !== -1);
-  //   })
-  // });
+  // if (cliques.every(({ missingVariables }) => missingVariables.length === 0)) {
+  //   return normalize(cliques);
+  // }
 
   // log({ isOk });
   // log('initialized cliques');
@@ -116,7 +133,7 @@ const normalize = (cliques) => {
 
 const normalizePotentials = (potentials) => {
   const sum = potentials.reduce((acc, { then }) => acc + then, 0);
-
+  
   return potentials.map(({ when, then }) => ({
     when,
     then: then / sum,
@@ -144,52 +161,76 @@ const createMessage = (combinations, potentials, messageReceived = null) => {
       
       message.push({
         then: newThen,
-        when,
+        when: clone(when),
       });
   }
 
-  if (useReceidedMessage && messageReceived) {
+  if (messageReceived) {
     for (const row of message) {
       const { when, then } = row;
       const whenKeys = Object.keys(when);
       const mr = messageReceived.find((mr) => whenKeys.every(wk => mr.when[wk] === when[wk]));
-      const value = round(round(then) / round(mr.then));
+      const value = then / (mr.then || 1);
       
       row.then = value;
     }
   }
 
-  const nomalizedMessage = normalizePotentials(message);
-
-  return nomalizedMessage;
+  // return normalizePotentials(message);
+  return message;
 };
 
 const divideMessage = (clique, message) => {
-  for (const row of message) {
-    clique.potentials
-      .filter(potential => {
-        return Object.keys(row.when).every(x => row.when[x] === potential.when[x]);
-      })
-      .forEach(potential => {
-        potential.then = round(potential.then / row.then);
-      });
+  if (message.length) {
+    const keys = Object.keys(message[0].when);
+
+    for (const row of message) {
+      clique.potentials
+        .filter(potential => {
+          return keys.every(x => row.when[x] === potential.when[x]);
+        })
+        .forEach(potential => {
+          potential.then = round(potential.then / row.then);
+        });
+    }
+  }
+};
+
+const removeFromArray = (array, string) => {
+  const index = array.indexOf(string);
+  if (index !== -1) {
+      array.splice(index, 1);
   }
 };
 
 const absorvMessage = (clique, message) => {
-  for (const row of message) {
-    clique.potentials
-      .filter(potential => {
-        return Object.keys(row.when).every(x => row.when[x] === potential.when[x]);
-      })
-      .forEach(potential => {
-        potential.then = round(potential.then * row.then);
-      });
+  // if (clique.missingVariables.length === 0) return;//Already absorv all variables
+  
+  if (message.length) {
+    const keys = Object.keys(message[0].when);
+
+    for (const row of message) {
+      clique.potentials
+        .filter(potential => {
+          return keys.every(x => row.when[x] === potential.when[x]);
+        })
+        .forEach(potential => {
+          potential.then = potential.then * row.then;
+        });
+    }
   }
+};
+
+const bestRootIndex = (cliques, sepSets) => {
+  return rootIndex;
 };
 
 const globalPropagation = (network, junctionTree, cliques, sepSets) => {
   let marked = [];
+  const nonParentNodes = Object.keys(network)
+    .map(nodeId => network[nodeId])
+    .filter(({ parents }) => parents.length === 0)
+    .map(({ id }) => id);
 
   const unmark = (id) => {
     marked = marked.filter(x => x !== id);
@@ -219,19 +260,18 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
 
     if (parentId !== null) {
       const clique = cliques.find(x => x.id === id);
-      const sepSet = getsepSet(sepSets, id, parentId);
+      const sepSet = getsepSet(sepSets, id, parentId).filter(x => nonParentNodes.indexOf(x) === -1);
       const potentials = clique.potentials;
       const combinations = buildCombinations(network, sepSet);
       const message = createMessage(combinations, potentials);
-      log('start collectEvidence for clique', clique.clique.join('|'));
-      log('send message: ', message, sepSet);
-
       const parent = cliques.find(x => x.id === parentId);
-      parent.oldPotentials = parent.potentials.map(({ when, then }) => ({ when, then }));
+      log('start collectEvidence for clique', clique.clique.join('|'));
+      log('send message: ', message, sepSet, parent.clique.join('|'));
+
+      // parent.oldPotentials = clone(parent.potentials);
+      parent.messagesReceived.set(clique.id, message);
       absorvMessage(parent, message);
 
-      if (parent.messagesReceived === undefined) parent.messagesReceived = {};
-      parent.messagesReceived[sepSet.join('|')] = message;     
       log('end collectEvidence for clique', clique.clique.join('|'));
     }
 
@@ -243,70 +283,65 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
 
     const clique = cliques.find(x => x.id === id);
     // const potentials = clique.oldPotentials;
-    const potentials = clique.potentials;
-    const { messagesReceived } = clique;
+    const { messagesReceived, potentials } = clique;
     log('start distributeEvidence for clique', clique.clique.join('|'));
-
-    delete clique.oldPotentials;
+    log('messagesReceived messagesReceived messagesReceived ', messagesReceived);
 
     const neighbors = junctionTree.getNeighborsOf(id)
       .filter(x => !isMarked(x));
-    let teste = [ ...neighbors ]; 
     
     for (const neighborId of neighbors) {
-      const sepSet = getsepSet(sepSets, id, neighborId);
-      const messageReceived = messagesReceived[sepSet.join('|')];
+      const sepSet = getsepSet(sepSets, id, neighborId).filter(x => nonParentNodes.indexOf(x) === -1);
+      const messageReceived = messagesReceived.get(neighborId);
       const combinations = buildCombinations(network, sepSet);
-      // const temp = [...potentials];
-      // divideMessage(clique, messageReceived);
       const message = createMessage(combinations, potentials, messageReceived);
+      const neighbor = cliques.find(x => x.id === neighborId);
+      // divideMessage(clique, messageReceived);
       
-      log('send message', message, messageReceived, sepSet, clique.potentials);
+      log('send message', message, messageReceived, sepSet, neighbor.clique.join('|'));
 
       // if (message.every(({ then }) => then == Number.isInteger( Math.round(then * 100) / 100  ))) {
       //   teste = teste.filter(x => x !== neighborId);
       //   continue;
       // }
 
-      const neighbor = cliques.find(x => x.id === neighborId);
-      absorvMessage(neighbor, message);
-    }
-
-    for (const neighbor of neighbors) {
-      distributeEvidence(neighbor);
+      absorvMessage(neighbor, message, true);
+      distributeEvidence(neighborId);
     }
 
     log('end distributeEvidence for clique', clique.clique.join('|'));
     unmark(id);
   };
 
-  const nodes = junctionTree.getNodes();
-  const root = nodes[rootIndex];
-  // const root = nodes[nodes.length - 1];
+  if (cliques.length > 1) {
+    const nodes = junctionTree.getNodes();
+    const root = nodes[bestRootIndex()];
+    // const root = nodes[nodes.length - 1];
 
-  log('*** CLIQUE ROOT ***', rootIndex);
-  log(cliques.find(({ id }) => id == root).clique.join('|'));
-  log('*** CLIQUE ROOT ***');
+    log('*** CLIQUE ROOT ***', rootIndex);
+    log(cliques.find(({ id }) => id == root).clique.join('|'));
+    log('*** CLIQUE ROOT ***');
 
-  unmarkAll();
-  log('------------------------------------------');
-  collectEvidence(root);
-  log('------------------------------------------');
+    unmarkAll();
+    log('------------------------------------------');
+    collectEvidence(root);
+    log('------------------------------------------');
 
-  const sumALLLL = cliques.map(clique => clique.potentials.reduce((acc, { then }) => acc + then, 0))
-    .reduce((acc, v) => acc + v);
+    const sumALLLL = cliques.map(clique => clique.potentials.reduce((acc, { then }) => acc + then, 0))
+      .reduce((acc, v) => acc + v);
 
-    log('sumALLLL', sumALLLL);
-  // logTableCliques(cliques);
-  log(cliques);
+      log('sumALLLL', sumALLLL);
+    // logTableCliques(cliques);
+    log(cliques);
 
-  unmarkAll();
-  log('------------------------------------------');
-  distributeEvidence(root);
-  log('------------------------------------------');
+    unmarkAll();
+    log('------------------------------------------');
+    distributeEvidence(root);
+    log('------------------------------------------');
 
-  log('FINAL CLIQUES (WITHOUT NORMALIZATION)', cliques);
-  logTableCliques(cliques);
+    log('FINAL CLIQUES (WITHOUT NORMALIZATION)', cliques);
+    logTableCliques(cliques);
+  }
 };
 
 const initializePotentials = (cliques, network, given) => {
@@ -329,7 +364,15 @@ const initializePotentials = (cliques, network, given) => {
   for (const clique of cliques) {
     clique.factors = [];
     clique.potentials = [];
+    clique.messagesReceived = new Map();
+    clique.missingVariables = clique.clique.filter(nodeId => {
+      const node = network[nodeId];
+      if (node.parents.length == 0) return false;
+
+      return node.parents.filter(parentId => clique.clique.indexOf(parentId) === -1).length > 0
+    });
   }
+  log(cliques);
 
   for (const nodeId of Object.keys(network)) {
     const node = network[nodeId];
@@ -734,8 +777,8 @@ const logTable = (arg) => {
 
 const round = (v) => {
   return v;
-  return f.round(v, 4);
-  return parseFloat((v).toFixed(10));
+  // return f.round(v, 4);
+  // return parseFloat((v).toFixed(10));
 };
 
 const logTableCliques = (cliques) => {
