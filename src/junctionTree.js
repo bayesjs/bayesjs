@@ -3,30 +3,47 @@ import isEqual from 'lodash/isequal';
 // import deepFreeze from 'deep-freeze';
 import clone from 'clone';
 
-const enableLog = true;
-const cliquesCache = new WeakMap();
+const enableLog = false;
+const weakMap = new WeakMap();
+const map = new Map();
 let rootIndex = 0;
 
 export function infer(network, nodes, given = {}, root = 0) {
   rootIndex = root;
-  let cliques = cliquesCache.get(network);
+  let cachedJT = weakMap.get(network);
 
-  if (cliques === undefined) {
-    cliques = buildCliques(network, given);
-    cliquesCache.set(network, cliques);
-    log('FINAL CLIQUES', cliques);
-    log('network', network);
-    // checkConsistency(network, cliques);
+  if (cachedJT === undefined) {
+    log('NOT JT');
+    map.clear();
+    cachedJT = createCliquesInfo(network);
+    weakMap.set(network, cachedJT);
   }
+  const { emptyCliques, sepSets, junctionTree } = cachedJT;
+  const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
+
+  // if (cliques === undefined) {
+  //   console.log('NOT CLIQUES');
+  //   map.clear();
+  //   cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
+  // }
   
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodesToInfer = Object.keys(nodes);
   const nodeToInfer = nodesToInfer[0];
   const stateToInfer = nodes[nodeToInfer];
+  
+  return getResult(cliques, nodeToInfer, stateToInfer);
+};
+
+const getResult = (cliques, nodeToInfer, stateToInfer) => {
+  const key = `${nodeToInfer}-${stateToInfer}`;
+  const cachedResult = map.get(key);
+  if (cachedResult !== undefined) return cachedResult;
+  
   const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
-  const clique = cliquesNode.reduce((minimum, current) => {
-    if (current.clique.length < minimum.clique.length) return current;
-    return minimum;
+  const clique = cliquesNode.reduce((maximal, current) => {
+    if (current.clique.length > maximal.clique.length) return current;
+    return maximal;
   });
   
   const values = clique.potentials
@@ -34,10 +51,11 @@ export function infer(network, nodes, given = {}, root = 0) {
     .map(x => x.then);
 
   const result = values.reduce((acc, x) => acc + x);
-  log({ nodeToInfer, stateToInfer, values, result });
-  
+  log({ nodeToInfer, stateToInfer, values, result, cliquesNode });
+  // map.set(key, result);
+
   return result;
-};
+}
 
 const checkConsistency = (network, cliques) => {
   const dict = new Map();
@@ -120,6 +138,33 @@ const buildCliques = (oNetwork, given) => {
   // log();
 
   return normalize(cliques);
+};
+
+const createCliquesInfo = (network) => {
+  const moralGraph = buildMoralGraph(network);
+  const triangulatedGraph = buildTriangulatedGraph(moralGraph);
+  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, network);
+  const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
+
+  return {
+    emptyCliques: cliques, 
+    sepSets,
+    junctionTree,
+  };
+};
+
+const propagationCliques = (cliques, network, junctionTree, sepSets, given) => {
+  const key = Object.keys(given).join('');
+  const cached = map.get(key);
+  if (cached !== undefined) return cached;
+  log('NOT PROPAGATION');
+  map.clear();
+  initializePotentials(cliques, network, given);
+  globalPropagation(network, junctionTree, cliques, sepSets);
+
+  const result = normalize(cliques);
+  map.set(key, result);
+  return result;
 };
 
 const normalize = (cliques) => {
