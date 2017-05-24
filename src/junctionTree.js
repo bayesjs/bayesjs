@@ -8,24 +8,44 @@ const weakMap = new WeakMap();
 const map = new Map();
 let rootIndex = 0;
 
+const getKeyNetwork = (network) => {
+  return Object.keys(network)
+    .reduce((p, nodeId) => {
+      const { id, parents, state, cpt } = network[nodeId];
+      
+      return p + JSON.stringify({ id, parents, state, cpt });
+    }, '')
+};
+
+const getKeyGiven = (given) => {
+  const keys = Object.keys(given);
+  console.log(given);
+  
+  if (keys.length) {
+    return keys.map(nodeId => ({ nodeId, state: given[nodeId] }))
+      .reduce((str, {nodeId, state}) => `${str}-${nodeId}-${state}`, '')
+  }
+  
+  return "NO GIVEN";
+};
+
 export function infer(network, nodes, given = {}, root = 0) {
   rootIndex = root;
-  let cachedJT = weakMap.get(network);
-
-  if (cachedJT === undefined) {
-    log('NOT JT');
+  const key = getKeyNetwork(network);
+  // let cachedJT = weakMap.get(network);
+  let cachedJT2 = map.get(key);
+  
+  if (cachedJT2 === undefined) {
+    log('NO JT');
     map.clear();
-    cachedJT = createCliquesInfo(network);
-    weakMap.set(network, cachedJT);
+    // cachedJT = createCliquesInfo(network);
+    cachedJT2 = createCliquesInfo(network);
+    // weakMap.set(network, cachedJT);
+    map.set(key, cachedJT2);      
   }
-  const { emptyCliques, sepSets, junctionTree } = cachedJT;
+  const { emptyCliques, sepSets, junctionTree } = cachedJT2;
   const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
-
-  // if (cliques === undefined) {
-  //   console.log('NOT CLIQUES');
-  //   map.clear();
-  //   cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
-  // }
+  
   
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodesToInfer = Object.keys(nodes);
@@ -36,9 +56,9 @@ export function infer(network, nodes, given = {}, root = 0) {
 };
 
 const getResult = (cliques, nodeToInfer, stateToInfer) => {
-  const key = `${nodeToInfer}-${stateToInfer}`;
-  const cachedResult = map.get(key);
-  if (cachedResult !== undefined) return cachedResult;
+  // const key = `${nodeToInfer}-${stateToInfer}`;
+  // const cachedResult = map.get(key);
+  // if (cachedResult !== undefined) return cachedResult;
   
   const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
   const clique = cliquesNode.reduce((maximal, current) => {
@@ -79,20 +99,12 @@ const checkConsistency = (network, cliques) => {
   console.log(dict);
 };
 
-const buildCliques = (oNetwork, given) => {
-  const network = { ...oNetwork };
-  // return;
+const createCliquesInfo = (network) => {
   const moralGraph = buildMoralGraph(network);
-  // log('MORAL GRAPH');
-  // moralGraph.print();
-  // log();
-
   const triangulatedGraph = buildTriangulatedGraph(moralGraph);
-  // log('TRIANGULATED GRAPH');
-  // triangulatedGraph.print();
-  // log();
-  // triangulatedGraph.print();
   const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, network);
+  const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
+
   log('cliques', cliques);
   log('*** CLIQUES ***');
   log(
@@ -104,47 +116,6 @@ const buildCliques = (oNetwork, given) => {
     }).join('\n')
   );
   log('******');
-  // log('CLIQUE GRAPH');
-  // cliqueGraph.print();
-  // log('cliques');
-  // console.dir(cliques);
-  // log('sepSets');
-  // console.dir(sepSets);
-  // log();
-
-  const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
-  // log('JUNCTION TREE');
-  // junctionTree.print();
-  // log('cliques');
-  // console.dir(cliques);
-  // log('sepSets');
-  // console.dir(sepSets);
-  // log();
-
-  initializePotentials(cliques, network, given);
-
-  // if (cliques.every(({ missingVariables }) => missingVariables.length === 0)) {
-  //   return normalize(cliques);
-  // }
-
-  // log({ isOk });
-  // log('initialized cliques');
-  // console.dir(cliques);
-  // log();
-
-  globalPropagation(network, junctionTree, cliques, sepSets);
-  // log('propagated cliques');
-  // console.dir(cliques);
-  // log();
-
-  return normalize(cliques);
-};
-
-const createCliquesInfo = (network) => {
-  const moralGraph = buildMoralGraph(network);
-  const triangulatedGraph = buildTriangulatedGraph(moralGraph);
-  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, network);
-  const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
 
   return {
     emptyCliques: cliques, 
@@ -157,8 +128,8 @@ const propagationCliques = (cliques, network, junctionTree, sepSets, given) => {
   const key = Object.keys(given).join('');
   const cached = map.get(key);
   if (cached !== undefined) return cached;
-  log('NOT PROPAGATION');
-  map.clear();
+  log('NO PROPAGATION');
+  
   initializePotentials(cliques, network, given);
   globalPropagation(network, junctionTree, cliques, sepSets);
 
