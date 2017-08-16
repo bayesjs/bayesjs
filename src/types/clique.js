@@ -1,6 +1,6 @@
 // @flow
 import type { INode } from './node';
 
-export type INetwork = {
-  [key: string]: INode
+export type IClique = {
+  clique: string[],
 };

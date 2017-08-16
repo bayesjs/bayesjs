@@ -1,19 +1,19 @@
 // @flow
 
-export type CptWithoutParents = {
+export type ICptWithoutParents = {
   [key: string]: number
 };
 
-export type CptWithParentsItem = {
+export type ICptWithParentsItem = {
   when: { [key: string]: string },
   then: { [key: string]: number }
 };
 
-export type CptWithParents = CptWithParentsItem[];
+export type ICptWithParents = ICptWithParentsItem[];
 
-export type Node = {
+export type INode = {
   id: string,
   states: string[],
   parents: string[],
-  cpt: CptWithoutParents | CptWithParents
+  cpt: ICptWithoutParents | ICptWithParents
 };

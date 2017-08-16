@@ -1,19 +1,37 @@
 import isEqual from 'lodash/isequal';
-// import f from 'float';
-// import deepFreeze from 'deep-freeze';
+import type { INetwork, INode } from './types';
 import clone from 'clone';
+import hash from 'object-hash';
 
-const weakMap = new WeakMap();
+// const weakMap = new WeakMap();
+// const map = new Map();
+
+const wmJT = new WeakMap();
+const wmKey = new WeakMap();
 const map = new Map();
 let rootIndex = 0;
 
-const getKeyNetwork = (network) => {
-  return Object.keys(network)
+const getKeyNetwork = (network: INetwork) => {
+  const keyCached = wmKey.get(network);
+
+  if (keyCached) return keyCached;
+
+  const obj = Object.keys(network)
     .reduce((p, nodeId) => {
       const { id, parents, state, cpt } = network[nodeId];
-      
-      return p + JSON.stringify({ id, parents, state, cpt });
-    }, '')
+      p[id] = { id, parents, state, cpt };
+      return p;
+    }, {});
+  
+  const key = JSON.stringify(obj);
+  
+  // console.time('hash');
+  // const keyHash = hash(obj);
+  // console.timeEnd('hash');
+  // console.log(keyHash);
+
+  wmKey.set(network, key);
+  return key;
 };
 
 const getKeyGiven = (given) => {
@@ -34,7 +52,7 @@ export const clearCache = () => {
 export function infer(network, nodes, given = {}, root = 0) {
   rootIndex = root;
   const key = getKeyNetwork(network);
-  // let cachedJT = weakMap.get(network);
+  
   let cachedJT2 = map.get(key);
   
   if (cachedJT2 === undefined) {
@@ -43,11 +61,10 @@ export function infer(network, nodes, given = {}, root = 0) {
     // cachedJT = createCliquesInfo(network);
     cachedJT2 = createCliquesInfo(network);
     // weakMap.set(network, cachedJT);
-    map.set(key, cachedJT2);      
+    map.set(key, cachedJT2);  
   }
   const { emptyCliques, sepSets, junctionTree } = cachedJT2;
   const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
-  
   
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodesToInfer = Object.keys(nodes);
@@ -57,6 +74,37 @@ export function infer(network, nodes, given = {}, root = 0) {
   return getResult(cliques, nodeToInfer, stateToInfer);
 };
 
+const breakNodesWithManyParents = (nodes) => {
+  for (const node of nodes) {
+    const { parents } = node;
+
+    if (parents.length > 2) {
+      // break;
+    }
+  }
+
+};
+
+const breakNode = (node) => {
+  const { id, parents, states, cpt } = node;
+  const max = 2;
+  const size = parents.length;
+
+  for (let i = 1; i <= size; i++) {
+    const newId = `${id}${i == size ? '' : i}`;
+    const newCpt = [];
+    const newParents = [];
+    
+    const newNode = {
+      id: newId,
+      parents: newParents,
+      cpt: newCpt,
+      states,
+    }; 
+  }
+
+};
+
 const getResult = (cliques, nodeToInfer, stateToInfer) => {
   // const key = `${nodeToInfer}-${stateToInfer}`;
   // const cachedResult = map.get(key);
@@ -64,7 +112,7 @@ const getResult = (cliques, nodeToInfer, stateToInfer) => {
   
   const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
   const clique = cliquesNode.reduce((maximal, current) => {
-    if (current.clique.length > maximal.clique.length) return current;
+    if (current.clique.length < maximal.clique.length) return current;
     return maximal;
   });
   
@@ -127,7 +175,6 @@ const propagationCliques = (cliques, network, junctionTree, sepSets, given) => {
 };
 
 const normalize = (cliques) => {
-  // return cliques;
   return cliques.map(({ id, potentials, clique }) => ({
     id,
     clique,
@@ -377,7 +424,7 @@ const initializePotentials = (cliques, network, given) => {
           }
         }
       }
-
+      
       clique.potentials.push({
         when: combination,
         then: value
