@@ -1,40 +1,39 @@
-// @flow
-
-type CptWithoutParents = {
+interface CptWithoutParents {
   [key: string]: number
 };
 
-type CptWithParentsItem = {
+interface CptWithParentsItem {
   when: { [key: string]: string },
   then: { [key: string]: number }
 };
 
-type CptWithParents = CptWithParentsItem[];
+interface CptWithParents extends Array<CptWithParentsItem> {
+}
 
-type Node = {
+interface Node {
   id: string,
   states: string[],
   parents: string[],
   cpt: CptWithoutParents | CptWithParents
 };
 
-type Network = {
+interface Network {
   [key: string]: Node
 };
 
-type Combinations = {
+interface Combinations {
   [key: string]: string
 };
 
-type FactorItem = {
+interface FactorItem {
   states: { [nodeId: string]: string },
   value: number
 };
 
-type Factor = FactorItem[];
+interface Factor extends Array<FactorItem> {
+}
 
-
-export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
+export function infer(network: Network, nodes: Combinations, giving?: Combinations): number {
   const variables = Object.keys(network);
   const variablesToInfer = Object.keys(nodes);
   const variablesGiving = giving ? Object.keys(giving) : [];
@@ -84,9 +83,9 @@ export function infer(network: Network, nodes: Combinations, giving: ?Combinatio
   return inferenceRow.value;
 }
 
-function buildFactor(node: Node, giving: ?Combinations): Factor {
+function buildFactor(node: Node, giving?: Combinations): Factor {
   const factor = [];
-  const cpt = (node.cpt : any);
+  const cpt = (<any>node.cpt);
 
   if (node.parents.length === 0) {
     for (let i = 0; i < node.states.length; i++) {

@@ -1,19 +1,18 @@
-// @flow
-
-export type ICptWithoutParents = {
+export interface ICptWithoutParents {
   [key: string]: number
-};
+}
 
-export type ICptWithParentsItem = {
+export interface ICptWithParentsItem {
   when: { [key: string]: string },
   then: { [key: string]: number }
-};
+}
 
-export type ICptWithParents = ICptWithParentsItem[];
+export interface ICptWithParents extends Array<ICptWithParentsItem> {
+}
 
-export type INode = {
+export interface INode {
   id: string,
   states: string[],
   parents: string[],
   cpt: ICptWithoutParents | ICptWithParents
-};
+}

@@ -1,6 +1,5 @@
-import isEqual from 'lodash/isequal';
-import type { INetwork, INode } from './types';
-import clone from 'clone';
+import { isEqual, intersection, cloneDeep } from 'lodash';
+import { INetwork, INode } from './types/index';
 import hash from 'object-hash';
 
 // const weakMap = new WeakMap();
@@ -18,18 +17,13 @@ const getKeyNetwork = (network: INetwork) => {
 
   const obj = Object.keys(network)
     .reduce((p, nodeId) => {
-      const { id, parents, state, cpt } = network[nodeId];
-      p[id] = { id, parents, state, cpt };
+      const { id, parents, states, cpt } = network[nodeId];
+      p[id] = { id, parents, states, cpt };
       return p;
     }, {});
   
   const key = JSON.stringify(obj);
   
-  // console.time('hash');
-  // const keyHash = hash(obj);
-  // console.timeEnd('hash');
-  // console.log(keyHash);
-
   wmKey.set(network, key);
   return key;
 };
@@ -56,11 +50,8 @@ export function infer(network, nodes, given = {}, root = 0) {
   let cachedJT2 = map.get(key);
   
   if (cachedJT2 === undefined) {
-    // console.log('NO JT');
     map.clear();
-    // cachedJT = createCliquesInfo(network);
     cachedJT2 = createCliquesInfo(network);
-    // weakMap.set(network, cachedJT);
     map.set(key, cachedJT2);  
   }
   const { emptyCliques, sepSets, junctionTree } = cachedJT2;
@@ -72,37 +63,6 @@ export function infer(network, nodes, given = {}, root = 0) {
   const stateToInfer = nodes[nodeToInfer];
   
   return getResult(cliques, nodeToInfer, stateToInfer);
-};
-
-const breakNodesWithManyParents = (nodes) => {
-  for (const node of nodes) {
-    const { parents } = node;
-
-    if (parents.length > 2) {
-      // break;
-    }
-  }
-
-};
-
-const breakNode = (node) => {
-  const { id, parents, states, cpt } = node;
-  const max = 2;
-  const size = parents.length;
-
-  for (let i = 1; i <= size; i++) {
-    const newId = `${id}${i == size ? '' : i}`;
-    const newCpt = [];
-    const newParents = [];
-    
-    const newNode = {
-      id: newId,
-      parents: newParents,
-      cpt: newCpt,
-      states,
-    }; 
-  }
-
 };
 
 const getResult = (cliques, nodeToInfer, stateToInfer) => {
@@ -212,7 +172,7 @@ const createMessage = (combinations, potentials, messageReceived = null) => {
       
       message.push({
         then: newThen,
-        when: clone(when),
+        when: cloneDeep(when),
       });
   }
 
@@ -272,7 +232,7 @@ const absorvMessage = (clique, message) => {
   }
 };
 
-const bestRootIndex = (cliques, sepSets) => {
+const bestRootIndex = () => {
   return rootIndex;
 };
 
@@ -342,7 +302,7 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
       const message = createMessage(combinations, potentials, messageReceived);
       const neighbor = cliques.find(x => x.id === neighborId);
 
-      absorvMessage(neighbor, message, true);
+      absorvMessage(neighbor, message);
       distributeEvidence(neighborId);
     }
 
@@ -370,7 +330,7 @@ const initializePotentials = (cliques, network, given) => {
       const inter = intersection(givenKeys, combKeys);
       
       if (combKeys.length) {
-        const all = inter.every(gk => comb[gk] == given[gk]);
+        const all = inter.every((gk) => comb[gk] == given[gk]);
         
         return all ? 1 : 0;
       }
@@ -530,14 +490,6 @@ const buildJunctionTree = (cliqueGraph, cliques, sepSets) => {
 
   return junctionTree;
 };
-
-const intersection = (listA, listB) => {
-  const a = new Set(listA);
-  const b = new Set(listB);
-  const intersection = new Set([...a].filter(x => b.has(x)));
-
-  return [...intersection];
-}
 
 const buildCliqueGraph = (triangulatedGraph, net) => {
   const cliqueGraph = createGraph();
@@ -726,8 +678,8 @@ const createGraph = () => {
 
   const areConnected = (nodeA, nodeB) => {
     return edges.some(edge => {
-      return (edge[0] === nodeA && edge[1] === nodeB) ||
-             (edge[0] === nodeB && edge[1] === nodeA);
+      return (edge[0] === nodeA && edge[1] === nodeB) || 
+        (edge[0] === nodeB && edge[1] === nodeA);
     });
   };
 

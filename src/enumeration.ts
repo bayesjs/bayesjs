@@ -1,36 +1,35 @@
-// @flow
-
 import equal from 'deep-equal';
 
-type CptWithoutParents = {
+interface CptWithoutParents {
   [key: string]: number
 };
 
-type CptWithParentsItem = {
+interface CptWithParentsItem {
   when: { [key: string]: string },
   then: { [key: string]: number }
 };
 
-type CptWithParents = CptWithParentsItem[];
+interface CptWithParents extends Array<CptWithParentsItem> {
+}
 
-type Node = {
+interface Node {
   id: string,
   states: string[],
   parents: string[],
   cpt: CptWithoutParents | CptWithParents
 };
 
-type Network = {
+interface Network {
   [key: string]: Node
 };
 
-type Combinations = {
+interface Combinations {
   [key: string]: string
 };
 
 const combinationsCache = new WeakMap();
 
-export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
+export function infer(network: Network, nodes: Combinations, giving?: Combinations): number {
   let combinations: Combinations[] = combinationsCache.get(network);
 
   if (combinations === undefined) {
@@ -62,7 +61,7 @@ function buildCombinations(network: Network): Combinations[] {
       return;
     }
 
-    const [ node: string, ...rest: string[] ] = nodes;
+    const [ node, ...rest ] = nodes;
     const states: string[] = network[node].states;
 
     for (let i = 0; i < states.length; i++) {
@@ -104,7 +103,7 @@ function calculateProbabilities(network: Network, combinations: Combinations[]):
     for (let j = 0; j < ids.length; j++) {
       const nodeId = ids[j];
       const node = network[nodeId];
-      const cpt = (node.cpt : any);
+      const cpt = (<any>node.cpt);
 
       if (node.parents.length === 0) {
         rowProduct *= cpt[row[nodeId]];

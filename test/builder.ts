@@ -1,4 +1,4 @@
-import expect from 'expect';
+import * as expect from 'expect';
 import { addNode } from '../src/index';
 import { rain, sprinkler, grassWet } from '../models/rain-sprinkler-grasswet';
 
