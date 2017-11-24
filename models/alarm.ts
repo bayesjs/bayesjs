@@ -1,11 +1,13 @@
-export const burglary = {
+import { INode } from '../src/types'
+
+export const burglary: INode = {
   id: 'BURGLARY',
   states: [ 'T', 'F' ],
   parents: [],
   cpt: { 'T': 0.001, 'F': 0.999 }
 };
 
-export const earthquake = {
+export const earthquake: INode = {
   id: 'EARTHQUAKE',
   states: [ 'T', 'F' ],
   parents: [],
@@ -24,7 +26,7 @@ export const alarm = {
   ]
 };
 
-export const johnCalls = {
+export const johnCalls: INode = {
   id: 'JOHN_CALLS',
   states: [ 'T', 'F' ],
   parents: [ 'ALARM' ],
@@ -34,7 +36,7 @@ export const johnCalls = {
   ]
 };
 
-export const maryCalls = {
+export const maryCalls: INode = {
   id: 'MARY_CALLS',
   states: [ 'T', 'F' ],
   parents: [ 'ALARM' ],

@@ -1,4 +1,4 @@
-import { INode } from './node'
+import { INode } from './INode'
 
 export interface INetwork {
   [key: string]: INode

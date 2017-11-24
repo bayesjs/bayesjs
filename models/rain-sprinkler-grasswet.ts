@@ -1,11 +1,13 @@
-export const rain = {
+import { INode } from '../src/types'
+
+export const rain: INode = {
   id: 'RAIN',
   states: [ 'T', 'F' ],
   parents: [],
   cpt: { 'T': 0.2, 'F': 0.8 }
 };
 
-export const sprinkler = {
+export const sprinkler: INode = {
   id: 'SPRINKLER',
   states: [ 'T', 'F' ],
   parents: [ 'RAIN' ],
@@ -15,7 +17,7 @@ export const sprinkler = {
   ]
 };
 
-export const grassWet = {
+export const grassWet: INode = {
   id: 'GRASS_WET',
   states: [ 'T', 'F' ],
   parents: [ 'RAIN', 'SPRINKLER' ],

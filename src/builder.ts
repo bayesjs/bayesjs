@@ -1,3 +1,5 @@
+import { INetwork, INode } from "./types/index";
+
 /**
  * Adds a node to a Bayesian Network
  *
@@ -14,7 +16,7 @@
  *
  * @returns {Object} Bayesian Network with node added
  */
-export const addNode = (network, node) => {
+export const addNode = (network: INetwork, node: INode): INetwork => {
   checkIfPropertiesAreValid(network, node);
 
   if (network.hasOwnProperty(node.id)) {
@@ -27,7 +29,7 @@ export const addNode = (network, node) => {
   };
 };
 
-const checkIfPropertiesAreValid = (network, node) => {
+const checkIfPropertiesAreValid = (network: INetwork, node: INode) => {
   if (!node.id || typeof node.id !== 'string') {
     throw new Error('The node id is required and must be a string.');
   }
@@ -64,7 +66,7 @@ const checkIfPropertiesAreValid = (network, node) => {
   }
 };
 
-const checkIfParentsExist = (network, parents) => {
+const checkIfParentsExist = (network: INetwork, parents: string[]) => {
   parents.forEach(parentId => {
     if (typeof parentId !== 'string') {
       throw new Error('The node parents must be an array of strings.');
@@ -76,7 +78,7 @@ const checkIfParentsExist = (network, parents) => {
   });
 };
 
-const checkIfAllProbabilitiesArePresent = (states, probabilities) => {
+const checkIfAllProbabilitiesArePresent = (states: string[], probabilities) => {
   states.forEach(state => {
     if (!probabilities || typeof probabilities[state] !== 'number') {
       throw new Error('You must set the probabilities of all states of this node.');

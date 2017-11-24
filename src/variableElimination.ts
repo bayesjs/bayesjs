@@ -1,39 +1,12 @@
-interface CptWithoutParents {
-  [key: string]: number
-};
+import { 
+  INetwork, 
+  ICombinations,
+  IFactor,
+  IFactorItem,
+  INode
+} from "./types/index";
 
-interface CptWithParentsItem {
-  when: { [key: string]: string },
-  then: { [key: string]: number }
-};
-
-interface CptWithParents extends Array<CptWithParentsItem> {
-}
-
-interface Node {
-  id: string,
-  states: string[],
-  parents: string[],
-  cpt: CptWithoutParents | CptWithParents
-};
-
-interface Network {
-  [key: string]: Node
-};
-
-interface Combinations {
-  [key: string]: string
-};
-
-interface FactorItem {
-  states: { [nodeId: string]: string },
-  value: number
-};
-
-interface Factor extends Array<FactorItem> {
-}
-
-export function infer(network: Network, nodes: Combinations, giving?: Combinations): number {
+export function infer(network: INetwork, nodes: ICombinations, giving?: ICombinations): number {
   const variables = Object.keys(network);
   const variablesToInfer = Object.keys(nodes);
   const variablesGiving = giving ? Object.keys(giving) : [];
@@ -41,38 +14,38 @@ export function infer(network: Network, nodes: Combinations, giving?: Combinatio
   const variablesToEliminate = variables
     .filter(x => !variablesToInfer.some(y => y === x) && !variablesGiving.some(y => y === x));
 
-  const factors = variables
-    .map(nodeId => buildFactor(network[nodeId], giving));
+  const IFactors = variables
+    .map(nodeId => buildIFactor(network[nodeId], giving));
 
   while (variablesToEliminate.length > 0) {
     const varToEliminate = variablesToEliminate.shift();
 
-    const factorsToJoin = factors.filter(factor => {
-      return Object.keys(factor[0].states).some(nodeId => nodeId === varToEliminate);
+    const IFactorsToJoin = IFactors.filter(IFactor => {
+      return Object.keys(IFactor[0].states).some(nodeId => nodeId === varToEliminate);
     });
 
-    const resultFactor = eliminateVariable(
-      factorsToJoin.reduce((f1, f2) => joinFactors(f1, f2)),
+    const resultIFactor = eliminateVariable(
+      IFactorsToJoin.reduce((f1, f2) => joinIFactors(f1, f2)),
       varToEliminate
     );
 
-    for (let i = 0; i < factorsToJoin.length; i++) {
-      factors.splice(factors.indexOf(factorsToJoin[i]), 1);
+    for (let i = 0; i < IFactorsToJoin.length; i++) {
+      IFactors.splice(IFactors.indexOf(IFactorsToJoin[i]), 1);
     }
 
-    factors.push(resultFactor);
+    IFactors.push(resultIFactor);
   }
 
-  const joinedFactor = factors
-    .filter(factor => Object.keys(factor[0].states).length > 0)
+  const joinedIFactor = IFactors
+    .filter(IFactor => Object.keys(IFactor[0].states).length > 0)
     .sort((f1, f2) => f1.length - f2.length)
     .reduce((f1, f2) => {
-      return joinFactors(f1, f2);
+      return joinIFactors(f1, f2);
     });
 
-  const normalizedFactor = normalizeFactor(joinedFactor);
+  const normalizedIFactor = normalizeIFactor(joinedIFactor);
 
-  const inferenceRow = normalizedFactor.find(row => {
+  const inferenceRow = normalizedIFactor.find(row => {
     return variablesToInfer.every(v => row.states[v] === nodes[v]);
   });
 
@@ -83,15 +56,15 @@ export function infer(network: Network, nodes: Combinations, giving?: Combinatio
   return inferenceRow.value;
 }
 
-function buildFactor(node: Node, giving?: Combinations): Factor {
-  const factor = [];
+function buildIFactor(node: INode, giving?: ICombinations): IFactor {
+  const IFactor = [];
   const cpt = (<any>node.cpt);
 
   if (node.parents.length === 0) {
     for (let i = 0; i < node.states.length; i++) {
       const state = node.states[i];
 
-      factor.push({
+      IFactor.push({
         states: { [node.id]: state },
         value: cpt[state]
       });
@@ -101,7 +74,7 @@ function buildFactor(node: Node, giving?: Combinations): Factor {
       for (let j = 0; j < node.states.length; j++) {
         const state = node.states[j];
 
-        factor.push({
+        IFactor.push({
           states: { ...cpt[i].when, [node.id]: state },
           value: cpt[i].then[state]
         });
@@ -112,23 +85,23 @@ function buildFactor(node: Node, giving?: Combinations): Factor {
   if (giving) {
     const givingIds = Object.keys(giving);
 
-    for (let i = factor.length - 1; i >= 0; i--) {
+    for (let i = IFactor.length - 1; i >= 0; i--) {
       for (let j = 0; j < givingIds.length; j++) {
         const givingId = givingIds[j];
 
-        if (factor[i].states[givingId] && factor[i].states[givingId] !== giving[givingId]) {
-          factor.splice(i, 1);
+        if (IFactor[i].states[givingId] && IFactor[i].states[givingId] !== giving[givingId]) {
+          IFactor.splice(i, 1);
           break;
         }
       }
     }
   }
 
-  return factor;
+  return IFactor;
 }
 
-function joinFactors(f1: Factor, f2: Factor): Factor {
-  const newFactor = [];
+function joinIFactors(f1: IFactor, f2: IFactor): IFactor {
+  const newIFactor = [];
 
   for (let i = 0; i < f1.length; i++) {
     for (let j = 0; j < f2.length; j++) {
@@ -139,12 +112,12 @@ function joinFactors(f1: Factor, f2: Factor): Factor {
 
       const nodeIds = Object.keys(states);
 
-      const alreadyExists = newFactor.some(x => {
+      const alreadyExists = newIFactor.some(x => {
         return nodeIds.every(nodeId => x.states[nodeId] === states[nodeId]);
       });
 
       if (!alreadyExists) {
-        newFactor.push({ states, value: 0 });
+        newIFactor.push({ states, value: 0 });
       }
     }
   }
@@ -152,62 +125,62 @@ function joinFactors(f1: Factor, f2: Factor): Factor {
   const nodeIdsF1 = Object.keys(f1[0].states);
   const nodeIdsF2 = Object.keys(f2[0].states);
 
-  for (let i = 0; i < newFactor.length; i++) {
-    const rowNewFactor = newFactor[i];
+  for (let i = 0; i < newIFactor.length; i++) {
+    const rowNewIFactor = newIFactor[i];
 
     const rowF1 = f1.find(x => {
-      return nodeIdsF1.every(nodeId => x.states[nodeId] === rowNewFactor.states[nodeId]);
+      return nodeIdsF1.every(nodeId => x.states[nodeId] === rowNewIFactor.states[nodeId]);
     });
 
     const rowF2 = f2.find(x => {
-      return nodeIdsF2.every(nodeId => x.states[nodeId] === rowNewFactor.states[nodeId]);
+      return nodeIdsF2.every(nodeId => x.states[nodeId] === rowNewIFactor.states[nodeId]);
     });
 
     if (rowF1 === undefined || rowF2 === undefined) {
       throw new Error('Fatal error');
     }
 
-    rowNewFactor.value = rowF1.value * rowF2.value;
+    rowNewIFactor.value = rowF1.value * rowF2.value;
   }
 
-  return newFactor;
+  return newIFactor;
 }
 
-function eliminateVariable(factor: Factor, variable: string): Factor {
-  const newFactor = [];
+function eliminateVariable(IFactor: IFactor, variable: string): IFactor {
+  const newIFactor = [];
 
-  for (let i = 0; i < factor.length; i++) {
-    const states = { ...factor[i].states };
+  for (let i = 0; i < IFactor.length; i++) {
+    const states = { ...IFactor[i].states };
 
     delete states[variable];
 
     const nodeIds = Object.keys(states);
 
-    const existingRow = newFactor.find(x => {
+    const existingRow = newIFactor.find(x => {
       return nodeIds.every(nodeId => x.states[nodeId] === states[nodeId]);
     });
 
     if (existingRow === undefined) {
-      newFactor.push({
+      newIFactor.push({
         states,
-        value: factor[i].value
+        value: IFactor[i].value
       });
     } else {
-      existingRow.value += factor[i].value;
+      existingRow.value += IFactor[i].value;
     }
   }
 
-  return newFactor;
+  return newIFactor;
 }
 
-function normalizeFactor(factor: Factor): Factor {
-  const total = factor.reduce((acc, row) => acc + row.value, 0);
+function normalizeIFactor(IFactor: IFactor): IFactor {
+  const total = IFactor.reduce((acc, row) => acc + row.value, 0);
 
   if (total === 0) {
-    return factor;
+    return IFactor;
   }
 
-  return factor
+  return IFactor
     .map(row => ({
       states: { ...row.states },
       value: row.value / total

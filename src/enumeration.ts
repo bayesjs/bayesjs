@@ -1,63 +1,37 @@
 import equal from 'deep-equal';
+import { INetwork, ICombinations } from './types'
 
-interface CptWithoutParents {
-  [key: string]: number
-};
+const ICombinationsCache = new WeakMap();
 
-interface CptWithParentsItem {
-  when: { [key: string]: string },
-  then: { [key: string]: number }
-};
+export function infer(network: INetwork, nodes: ICombinations, giving?: ICombinations): number {
+  let ICombinations: ICombinations[] = ICombinationsCache.get(network);
 
-interface CptWithParents extends Array<CptWithParentsItem> {
-}
-
-interface Node {
-  id: string,
-  states: string[],
-  parents: string[],
-  cpt: CptWithoutParents | CptWithParents
-};
-
-interface Network {
-  [key: string]: Node
-};
-
-interface Combinations {
-  [key: string]: string
-};
-
-const combinationsCache = new WeakMap();
-
-export function infer(network: Network, nodes: Combinations, giving?: Combinations): number {
-  let combinations: Combinations[] = combinationsCache.get(network);
-
-  if (combinations === undefined) {
-    combinations = buildCombinations(network);
-    combinationsCache.set(network, combinations);
+  if (ICombinations === undefined) {
+    ICombinations = buildICombinations(network);
+    ICombinationsCache.set(network, ICombinations);
   }
 
-  let filteredCombinations: Combinations[] = filterCombinations(combinations, nodes);
+  let filteredICombinations: ICombinations[] = filterICombinations(ICombinations, nodes);
   let probGiving: number = 1;
 
   if (giving) {
-    filteredCombinations = filterCombinations(filteredCombinations, giving);
+    filteredICombinations = filterICombinations(filteredICombinations, giving);
     probGiving = infer(network, giving);
   }
 
-  return calculateProbabilities(network, filteredCombinations) / probGiving;
+  return calculateProbabilities(network, filteredICombinations) / probGiving;
 }
 
-function buildCombinations(network: Network): Combinations[] {
-  const combinations: Combinations[] = [];
+function buildICombinations(network: INetwork): ICombinations[] {
+  const ICombinations: ICombinations[] = [];
 
-  makeCombinations(Object.keys(network));
+  makeICombinations(Object.keys(network));
 
-  return combinations;
+  return ICombinations;
 
-  function makeCombinations(nodes: string[], acc: Combinations = {}): void {
+  function makeICombinations(nodes: string[], acc: ICombinations = {}): void {
     if (nodes.length === 0) {
-      combinations.push(acc);
+      ICombinations.push(acc);
       return;
     }
 
@@ -67,7 +41,7 @@ function buildCombinations(network: Network): Combinations[] {
     for (let i = 0; i < states.length; i++) {
       const state: string = states[i];
 
-      makeCombinations(rest, {
+      makeICombinations(rest, {
         ...acc,
         [node]: state
       });
@@ -75,10 +49,10 @@ function buildCombinations(network: Network): Combinations[] {
   }
 }
 
-function filterCombinations(combinations: Combinations[], nodesToFilter: Combinations): Combinations[] {
+function filterICombinations(ICombinations: ICombinations[], nodesToFilter: ICombinations): ICombinations[] {
   const idsToFilter = Object.keys(nodesToFilter);
 
-  return combinations.filter(row => {
+  return ICombinations.filter(row => {
     for (let i = 0; i < idsToFilter.length; i++) {
       const idToFilter = idsToFilter[i];
 
@@ -91,13 +65,13 @@ function filterCombinations(combinations: Combinations[], nodesToFilter: Combina
   });
 }
 
-function calculateProbabilities(network: Network, combinations: Combinations[]): number {
+function calculateProbabilities(network: INetwork, ICombinations: ICombinations[]): number {
   const rowsProducts: number[] = [];
 
-  for (let i = 0; i < combinations.length; i++) {
+  for (let i = 0; i < ICombinations.length; i++) {
     let rowProduct = 1;
 
-    const row = combinations[i];
+    const row = ICombinations[i];
     const ids = Object.keys(row);
 
     for (let j = 0; j < ids.length; j++) {

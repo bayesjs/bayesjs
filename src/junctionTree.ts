@@ -1,5 +1,5 @@
 import { isEqual, intersection, cloneDeep } from 'lodash';
-import { INetwork, INode } from './types/index';
+import { INetwork, INode, INodeList, ICombinations, IClique } from './types/index';
 import hash from 'object-hash';
 
 // const weakMap = new WeakMap();
@@ -43,7 +43,7 @@ export const clearCache = () => {
   map.clear();
 }
 
-export function infer(network, nodes, given = {}, root = 0) {
+export const infer = (network: INetwork, nodes: INodeList, given: ICombinations = {}, root = 0) => {
   rootIndex = root;
   const key = getKeyNetwork(network);
   
@@ -56,7 +56,7 @@ export function infer(network, nodes, given = {}, root = 0) {
   }
   const { emptyCliques, sepSets, junctionTree } = cachedJT2;
   const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
-  
+  console.log({cliques})
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodesToInfer = Object.keys(nodes);
   const nodeToInfer = nodesToInfer[0];
@@ -65,7 +65,7 @@ export function infer(network, nodes, given = {}, root = 0) {
   return getResult(cliques, nodeToInfer, stateToInfer);
 };
 
-const getResult = (cliques, nodeToInfer, stateToInfer) => {
+const getResult = (cliques: IClique[], nodeToInfer, stateToInfer) => {
   // const key = `${nodeToInfer}-${stateToInfer}`;
   // const cachedResult = map.get(key);
   // if (cachedResult !== undefined) return cachedResult;
@@ -494,7 +494,7 @@ const buildJunctionTree = (cliqueGraph, cliques, sepSets) => {
 const buildCliqueGraph = (triangulatedGraph, net) => {
   const cliqueGraph = createGraph();
 
-  const cliques = [];
+  const cliques: IClique[] = [];
   const nodes = triangulatedGraph.getNodes();
 
   for (let i = 0; i < nodes.length; i++) {
