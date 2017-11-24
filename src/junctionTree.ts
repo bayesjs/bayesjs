@@ -43,7 +43,7 @@ export const clearCache = () => {
   map.clear();
 }
 
-export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations = {}): number => {
+export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations): number => {
   const key = getKeyNetwork(network);
   
   let cachedJT2 = map.get(key);
@@ -120,7 +120,7 @@ const createCliquesInfo = (network) => {
   };
 };
 
-const propagationCliques = (cliques, network, junctionTree, sepSets, given) => {
+const propagationCliques = (cliques, network, junctionTree, sepSets, given = {}) => {
   const key = getKeyGiven(given);
   const cached = map.get(key);
   if (cached !== undefined) return cached;
