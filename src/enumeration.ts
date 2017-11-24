@@ -1,9 +1,9 @@
 import equal from 'deep-equal';
-import { INetwork, ICombinations } from './types'
+import { INetwork, ICombinations, IInfer } from './types'
 
 const ICombinationsCache = new WeakMap();
 
-export function infer(network: INetwork, nodes: ICombinations, giving?: ICombinations): number {
+export const infer: IInfer = (network: INetwork, nodes?: ICombinations, giving?: ICombinations): number => {
   let ICombinations: ICombinations[] = ICombinationsCache.get(network);
 
   if (ICombinations === undefined) {

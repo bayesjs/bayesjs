@@ -9,3 +9,4 @@ export * from './IFactor';
 export * from './INetwork';
 export * from './INode';
 export * from './INodeList';
+export * from './IInfer';

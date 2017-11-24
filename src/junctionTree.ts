@@ -1,5 +1,5 @@
 import { isEqual, intersection, cloneDeep } from 'lodash';
-import { INetwork, INode, INodeList, ICombinations, IClique } from './types/index';
+import { INetwork, INode, INodeList, ICombinations, IClique, IInfer } from './types/index';
 import hash from 'object-hash';
 
 // const weakMap = new WeakMap();
@@ -43,8 +43,7 @@ export const clearCache = () => {
   map.clear();
 }
 
-export const infer = (network: INetwork, nodes: INodeList, given: ICombinations = {}, root = 0) => {
-  rootIndex = root;
+export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations = {}): number => {
   const key = getKeyNetwork(network);
   
   let cachedJT2 = map.get(key);
@@ -56,7 +55,7 @@ export const infer = (network: INetwork, nodes: INodeList, given: ICombinations 
   }
   const { emptyCliques, sepSets, junctionTree } = cachedJT2;
   const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
-  console.log({cliques})
+
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   const nodesToInfer = Object.keys(nodes);
   const nodeToInfer = nodesToInfer[0];

@@ -3,10 +3,11 @@ import {
   ICombinations,
   IFactor,
   IFactorItem,
-  INode
+  INode,
+  IInfer
 } from "./types/index";
 
-export function infer(network: INetwork, nodes: ICombinations, giving?: ICombinations): number {
+export const infer: IInfer = (network: INetwork, nodes: ICombinations, giving?: ICombinations): number => {
   const variables = Object.keys(network);
   const variablesToInfer = Object.keys(nodes);
   const variablesGiving = giving ? Object.keys(giving) : [];

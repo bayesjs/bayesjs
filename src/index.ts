@@ -1,3 +1,12 @@
+import * as enumeration from './enumeration'
+import * as junctionTree from './junctionTree'
+import * as variableElimination from './variableElimination'
+
+export const inferences =  {
+  enumeration,
+  junctionTree,
+  variableElimination,
+}
+
 export * from './builder';
-export * from './junctionTree';
-// export * from './variableElimination';
+export const infer = junctionTree.infer;
