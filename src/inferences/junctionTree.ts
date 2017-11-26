@@ -30,6 +30,41 @@ const wmKey = new WeakMap();
 const map = new Map();
 let rootIndex = 0;
 
+export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations): number => {
+  const key = getKeyNetwork(network);
+  
+  let cachedJT2 = map.get(key);
+  
+  if (cachedJT2 === undefined) {
+    map.clear();
+    cachedJT2 = createCliquesInfo(network);
+    map.set(key, cachedJT2);  
+  }
+  const { emptyCliques, sepSets, junctionTree } = cachedJT2;
+  const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
+
+  // TODO: considerar P(A,B,C), por enquanto só P(A)
+  const nodesToInfer = Object.keys(nodes);
+  const nodeToInfer = nodesToInfer[0];//Causa dos teste falharem...
+  const stateToInfer = nodes[nodeToInfer];
+  
+  return getResult(cliques, nodeToInfer, stateToInfer);
+};
+
+const getResult = (cliques: IClique[], nodeToInfer, stateToInfer) => {
+  const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
+  const clique = cliquesNode.reduce((maximal, current) => {
+    if (current.clique.length < maximal.clique.length) return current;
+    return maximal;
+  });
+  
+  const values = clique.potentials
+    .filter(x => x.when[nodeToInfer] === stateToInfer)
+    .map(x => x.then);
+
+  return sum(values);
+}
+
 const getKeyNetwork = (network: INetwork) => {
   const keyCached = wmKey.get(network);
 
@@ -63,48 +98,6 @@ export const clearCache = () => {
   map.clear();
 }
 
-export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations): number => {
-  const key = getKeyNetwork(network);
-  
-  let cachedJT2 = map.get(key);
-  
-  if (cachedJT2 === undefined) {
-    map.clear();
-    cachedJT2 = createCliquesInfo(network);
-    map.set(key, cachedJT2);  
-  }
-  const { emptyCliques, sepSets, junctionTree } = cachedJT2;
-  const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
-
-  // TODO: considerar P(A,B,C), por enquanto só P(A)
-  const nodesToInfer = Object.keys(nodes);
-  const nodeToInfer = nodesToInfer[0];
-  const stateToInfer = nodes[nodeToInfer];
-  
-  return getResult(cliques, nodeToInfer, stateToInfer);
-};
-
-const getResult = (cliques: IClique[], nodeToInfer, stateToInfer) => {
-  // const key = `${nodeToInfer}-${stateToInfer}`;
-  // const cachedResult = map.get(key);
-  // if (cachedResult !== undefined) return cachedResult;
-  
-  const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
-  const clique = cliquesNode.reduce((maximal, current) => {
-    if (current.clique.length < maximal.clique.length) return current;
-    return maximal;
-  });
-  
-  const values = clique.potentials
-    .filter(x => x.when[nodeToInfer] === stateToInfer)
-    .map(x => x.then);
-
-  const result = sum(values)
-  // map.set(key, result);
-
-  return result;
-}
-3
 const createCliquesInfo = (network: INetwork) => {
   const moralGraph = buildMoralGraph(network);
   const triangulatedGraph = buildTriangulatedGraph(moralGraph);

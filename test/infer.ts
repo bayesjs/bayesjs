@@ -1,6 +1,7 @@
 import * as expect from 'expect';
 import { addNode, inferences } from '../src/index';
 import { rain, sprinkler, grassWet } from '../models/rain-sprinkler-grasswet';
+import { IInfer } from '../src/types/index';
 
 const { 
   enumeration, 
@@ -23,7 +24,7 @@ const infersSingleNode = (infer) => {
   expect(infer(network, { 'GRASS_WET': 'F' }).toFixed(4)).toBe('0.5516');
 };
 
-const infersMultiplesNodes = (infer) => {
+const infersMultiplesNodes = (infer: IInfer) => {
   const nodesToInfer = {
     'RAIN': 'T',
     'SPRINKLER': 'T',
@@ -33,7 +34,7 @@ const infersMultiplesNodes = (infer) => {
   expect(infer(network, nodesToInfer).toFixed(4)).toBe('0.0020');
 };
 
-const inferOnNodesGivingOthers = (infer) => {
+const inferOnNodesGivingOthers = (infer: IInfer) => {
   const nodeToInfer = { 'RAIN': 'T' };
   const giving = { 'GRASS_WET': 'T' };
 
