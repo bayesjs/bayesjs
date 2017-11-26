@@ -6,5 +6,7 @@ import {
 export interface IClique {
   id: string,
   clique: string[],
-  potentials?: ICliquePotentialItem[]
+  potentials?: ICliquePotentialItem[],
+  messagesReceived?: Map<string, ICliquePotentialItem[]>,
+  factors?: string[]
 }

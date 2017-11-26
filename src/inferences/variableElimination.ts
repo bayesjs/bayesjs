@@ -5,7 +5,7 @@ import {
   IFactorItem,
   INode,
   IInfer
-} from "./types/index";
+} from '../types/index';
 
 export const infer: IInfer = (network: INetwork, nodes: ICombinations, giving?: ICombinations): number => {
   const variables = Object.keys(network);

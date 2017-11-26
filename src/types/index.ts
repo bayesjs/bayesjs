@@ -10,3 +10,7 @@ export * from './INetwork';
 export * from './INode';
 export * from './INodeList';
 export * from './IInfer';
+export * from './ISepSet';
+export * from './IMoralGraph';
+export * from './IEdge';
+export * from './IGraph';

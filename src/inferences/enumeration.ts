@@ -1,17 +1,17 @@
-import equal from 'deep-equal';
-import { INetwork, ICombinations, IInfer } from './types'
+import * as equal from 'deep-equal';
+import { INetwork, ICombinations, IInfer } from '../types'
 
-const ICombinationsCache = new WeakMap();
+const combinationsCache = new WeakMap();
 
 export const infer: IInfer = (network: INetwork, nodes?: ICombinations, giving?: ICombinations): number => {
-  let ICombinations: ICombinations[] = ICombinationsCache.get(network);
+  let combinations: ICombinations[] = combinationsCache.get(network);
 
-  if (ICombinations === undefined) {
-    ICombinations = buildICombinations(network);
-    ICombinationsCache.set(network, ICombinations);
+  if (combinations === undefined) {
+    combinations = buildICombinations(network);
+    combinationsCache.set(network, combinations);
   }
 
-  let filteredICombinations: ICombinations[] = filterICombinations(ICombinations, nodes);
+  let filteredICombinations: ICombinations[] = filterICombinations(combinations, nodes);
   let probGiving: number = 1;
 
   if (giving) {
@@ -23,15 +23,15 @@ export const infer: IInfer = (network: INetwork, nodes?: ICombinations, giving?:
 }
 
 function buildICombinations(network: INetwork): ICombinations[] {
-  const ICombinations: ICombinations[] = [];
+  const combinations: ICombinations[] = [];
 
   makeICombinations(Object.keys(network));
 
-  return ICombinations;
+  return combinations;
 
   function makeICombinations(nodes: string[], acc: ICombinations = {}): void {
     if (nodes.length === 0) {
-      ICombinations.push(acc);
+      combinations.push(acc);
       return;
     }
 

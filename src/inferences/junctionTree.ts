@@ -1,9 +1,29 @@
-import { isEqual, intersection, cloneDeep } from 'lodash';
-import { INetwork, INode, INodeList, ICombinations, IClique, IInfer } from './types/index';
+import { 
+  isEqual, 
+  intersection, 
+  cloneDeep,
+  sum
+} from 'lodash';
+import { 
+  INetwork, 
+  INode, 
+  INodeList, 
+  ICombinations, 
+  IClique, 
+  IInfer, 
+  ISepSet,
+  ICliquePotentialItem,
+  ICptWithParents,
+  IMoralGraph,
+  IEdge,
+  IGraph
+} from '../types/index';
 import hash from 'object-hash';
-
-// const weakMap = new WeakMap();
-// const map = new Map();
+import { 
+  buildMoralGraph, 
+  buildTriangulatedGraph, 
+  createGraph 
+} from '../graph/index';
 
 const wmJT = new WeakMap();
 const wmKey = new WeakMap();
@@ -79,35 +99,13 @@ const getResult = (cliques: IClique[], nodeToInfer, stateToInfer) => {
     .filter(x => x.when[nodeToInfer] === stateToInfer)
     .map(x => x.then);
 
-  const result = values.reduce((acc, x) => acc + x);
+  const result = sum(values)
   // map.set(key, result);
 
   return result;
 }
-
-const checkConsistency = (network, cliques) => {
-  const dict = new Map();
-
-  for (const clique of cliques) {
-    const nodesIds = clique.clique;
-
-    for (const nodeId of nodesIds) {
-      const states = network[nodeId].states;
-      
-      for (const state of states) {
-        const key = `${clique.id}-${nodeId}-${state}`;
-        const value = clique.potentials
-          .filter(({ when }) => when[nodeId] === state)
-          .reduce((acc, { then }) => acc + then, 0);
-
-        dict.set(key, value);
-      }
-    }
-  }
-  console.log(dict);
-};
-
-const createCliquesInfo = (network) => {
+3
+const createCliquesInfo = (network: INetwork) => {
   const moralGraph = buildMoralGraph(network);
   const triangulatedGraph = buildTriangulatedGraph(moralGraph);
   const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, network);
@@ -120,7 +118,7 @@ const createCliquesInfo = (network) => {
   };
 };
 
-const propagationCliques = (cliques, network, junctionTree, sepSets, given = {}) => {
+const propagationCliques = (cliques: IClique[], network: INetwork, junctionTree, sepSets: ISepSet[], given: ICombinations = {}) => {
   const key = getKeyGiven(given);
   const cached = map.get(key);
   if (cached !== undefined) return cached;
@@ -133,7 +131,7 @@ const propagationCliques = (cliques, network, junctionTree, sepSets, given = {})
   return result;
 };
 
-const normalize = (cliques) => {
+const normalize = (cliques: IClique[]) => {
   return cliques.map(({ id, potentials, clique }) => ({
     id,
     clique,
@@ -150,7 +148,7 @@ const normalizePotentials = (potentials) => {
   }));
 }
 
-const getsepSet = (sepSets, id, neighborId) => {
+const getsepSet = (sepSets: ISepSet[], id, neighborId) => {
   const temp = sepSets.find(x => {
     return (x.ca === neighborId && x.cb === id) || (x.ca === id && x.cb === neighborId);
   });
@@ -158,9 +156,9 @@ const getsepSet = (sepSets, id, neighborId) => {
   return temp.sharedNodes.sort();
 };
 
-const createMessage = (combinations, potentials, messageReceived = null) => {
+const createMessage = (combinations: ICombinations[], potentials: ICliquePotentialItem[], messageReceived = null) => {
   const initCombs = combinations.map(x => ({ when: x, then: 0 }))
-  const message = [];
+  const message: ICliquePotentialItem[] = [];
 
   for (const { when } of initCombs) {
     const keys = Object.keys(when);
@@ -190,7 +188,7 @@ const createMessage = (combinations, potentials, messageReceived = null) => {
   return message;
 };
 
-const divideMessage = (clique, message) => {
+const divideMessage = (clique: IClique, message) => {
   if (message.length) {
     const keys = Object.keys(message[0].when);
 
@@ -213,9 +211,7 @@ const removeFromArray = (array, string) => {
   }
 };
 
-const absorvMessage = (clique, message) => {
-  // if (clique.missingVariables.length === 0) return;//Already absorv all variables
-  
+const absorvMessage = (clique: IClique, message) => {
   if (message.length) {
     const keys = Object.keys(message[0].when);
 
@@ -235,7 +231,7 @@ const bestRootIndex = () => {
   return rootIndex;
 };
 
-const globalPropagation = (network, junctionTree, cliques, sepSets) => {
+const globalPropagation = (network: INetwork, junctionTree, cliques: IClique[], sepSets: ISepSet[]) => {
   let marked = [];
   const nonParentNodes = Object.keys(network)
     .map(nodeId => network[nodeId])
@@ -321,7 +317,7 @@ const globalPropagation = (network, junctionTree, cliques, sepSets) => {
   }
 };
 
-const initializePotentials = (cliques, network, given) => {
+const initializePotentials = (cliques: IClique[], network: INetwork, given: ICombinations) => {
   const givenKeys = Object.keys(given);
   const getInitalValue = (comb) => {
     if (givenKeys.length) {
@@ -341,12 +337,6 @@ const initializePotentials = (cliques, network, given) => {
     clique.factors = [];
     clique.potentials = [];
     clique.messagesReceived = new Map();
-    clique.missingVariables = clique.clique.filter(nodeId => {
-      const node = network[nodeId];
-      if (node.parents.length == 0) return false;
-
-      return node.parents.filter(parentId => clique.clique.indexOf(parentId) === -1).length > 0
-    });
   }
 
   for (const nodeId of Object.keys(network)) {
@@ -375,7 +365,7 @@ const initializePotentials = (cliques, network, given) => {
             const when = network[factorId].parents
               .reduce((acc, x) => ({ ...acc, [x]: combination[x] }), {});
 
-            const cptRow = factor.cpt.find(x => isEqual(x.when, when));
+            const cptRow = (<ICptWithParents>factor.cpt).find(x => isEqual(x.when, when));
 
             value *= cptRow.then[combination[factorId]];
           } else {
@@ -394,8 +384,8 @@ const initializePotentials = (cliques, network, given) => {
   }
 };
 
-const buildCombinations = (network, nodesToCombine) => {
-  const combinations = [];
+const buildCombinations = (network: INetwork, nodesToCombine: string[]): ICombinations[] => {
+  const combinations: ICombinations[] = [];
 
   const makeCombinations = (nodes, acc = {}) => {
     if (nodes.length === 0) {
@@ -519,7 +509,7 @@ const buildCliqueGraph = (triangulatedGraph, net) => {
     }
   }
 
-  const sepSets = [];
+  const sepSets: ISepSet[] = [];
 
   for (let i = 0; i < cliques.length; i++) {
     cliqueGraph.addNode(cliques[i].id);
@@ -551,180 +541,4 @@ const buildCliqueGraph = (triangulatedGraph, net) => {
   };
 };
 
-const buildTriangulatedGraph = moralGraph => {
-  const triangulatedGraph = moralGraph.clone();
-  const clonedGraph = triangulatedGraph.clone();
-  const nodes = clonedGraph.getNodes();
-  const nodesToRemove = [ ...nodes ];
 
-  const findLessNeighbors = () => {
-    if (nodesToRemove.length == 1) return nodesToRemove.shift();
-    let index = 0;
-    let candidateNeighbors = clonedGraph.getNeighborsOf(nodesToRemove[index]);
-
-    for (let i = 1; i < nodesToRemove.length; i++) {
-      const node = nodesToRemove[i];
-      const neighbors = clonedGraph.getNeighborsOf(node);
-
-      if (neighbors.length < candidateNeighbors.length) {
-        index = i;
-        candidateNeighbors = neighbors;
-      }
-    }
-
-    const node = nodesToRemove[index];
-    nodesToRemove.splice(index, 1);
-    return node;
-  };
-
-  while (nodesToRemove.length > 0) {
-    const nodeToRemove = findLessNeighbors();
-    const neighbors = clonedGraph.getNeighborsOf(nodeToRemove).filter(id => nodesToRemove.indexOf(id) > -1);
-    
-    for (let i = 0; i < neighbors.length; i++) {
-      for (let j = i + 1; j < neighbors.length; j++) {
-        const neighborA = neighbors[i];
-        const neighborB = neighbors[j];
-
-        if (!clonedGraph.containsNode(neighborA) || !clonedGraph.containsNode(neighborB)) {
-          continue;
-        }
-
-        if (!clonedGraph.areConnected(neighborA, neighborB)) {
-          clonedGraph.addEdge(neighborA, neighborB);
-          triangulatedGraph.addEdge(neighborA, neighborB);
-        }
-      }
-    }
-
-    clonedGraph.removeNode(nodeToRemove.node);
-  }
-
-  return triangulatedGraph;
-};
-
-const buildMoralGraph = network => {
-  const nodes = Object.keys(network).map(id => network[id]);
-  const moralGraph = createGraph();
-
-  for (const node of nodes) {
-    moralGraph.addNode(node.id);
-
-    for (const parentId of node.parents) {
-      moralGraph.addEdge(parentId, node.id);
-    }
-  }
-
-  for (const node of nodes) {
-    for (let i = 0; i < node.parents.length; i++) {
-      for (let j = i + 1; j < node.parents.length; j++) {
-        if (!moralGraph.areConnected(node.parents[i], node.parents[j])) {
-          moralGraph.addEdge(node.parents[i], node.parents[j]);
-        }
-      }
-    }
-  }
-
-  return moralGraph;
-};
-
-const createGraph = () => {
-  const nodes = [];
-  const edges = [];
-
-  const addNode = node => {
-    nodes.push(node);
-  };
-
-  const removeNode = node => {
-    for (let i = edges.length - 1; i >= 0; i--) {
-      if (edges[i][0] === node || edges[i][1] === node) {
-        edges.splice(i, 1);
-      }
-    }
-
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      if (nodes[i] === node) {
-        nodes.splice(i, 1);
-        break;
-      }
-    }
-  };
-
-  const getNodes = () => {
-    return nodes;
-  };
-
-  const containsNode = node => {
-    return nodes.some(x => x === node);
-  };
-
-  const addEdge = (nodeA, nodeB) => {
-    edges.push([ nodeA, nodeB ]);
-  };
-
-  const removeEdge = (nodeA, nodeB) => {
-    for (let i = edges.length - 1; i >= 0; i--) {
-      const shouldRemove =
-        (edges[i][0] === nodeA && edges[i][1] === nodeB) ||
-        (edges[i][0] === nodeB && edges[i][1] === nodeA);
-
-      if (shouldRemove) {
-        edges.splice(i, 1);
-      }
-    }
-  };
-
-  const areConnected = (nodeA, nodeB) => {
-    return edges.some(edge => {
-      return (edge[0] === nodeA && edge[1] === nodeB) || 
-        (edge[0] === nodeB && edge[1] === nodeA);
-    });
-  };
-
-  const getNeighborsOf = node => {
-    const neighbors = [];
-
-    for (const edge of edges) {
-      if (edge[0] === node) {
-        neighbors.push(edge[1]);
-      } else if (edge[1] === node) {
-        neighbors.push(edge[0]);
-      }
-    }
-
-    return neighbors;
-  };
-
-  const clone = () => {
-    const clonedGraph = createGraph();
-
-    for (const node of nodes) {
-      clonedGraph.addNode(node);
-    }
-
-    for (const edge of edges) {
-      clonedGraph.addEdge(edge[0], edge[1]);
-    }
-
-    return clonedGraph;
-  };
-
-  return {
-    addNode,
-    removeNode,
-    getNodes,
-    containsNode,
-    addEdge,
-    removeEdge,
-    areConnected,
-    getNeighborsOf,
-    clone,
-    print: () => {
-      console.log('nodes');
-      console.dir(nodes);
-      console.log('edges');
-      console.dir(edges);
-    }
-  };
-};

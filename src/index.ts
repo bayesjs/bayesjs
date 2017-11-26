@@ -1,6 +1,8 @@
-import * as enumeration from './enumeration'
-import * as junctionTree from './junctionTree'
-import * as variableElimination from './variableElimination'
+import {
+  enumeration,
+  junctionTree,
+  variableElimination,
+} from './inferences/index';
 
 export const inferences =  {
   enumeration,
