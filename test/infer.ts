@@ -2,6 +2,7 @@ import * as expect from 'expect';
 import { addNode, inferences } from '../src/index';
 import { rain, sprinkler, grassWet } from '../models/rain-sprinkler-grasswet';
 import { IInfer } from '../src/types/index';
+import { createNetwork } from '../src/utils';
 
 const { 
   enumeration, 
@@ -9,11 +10,7 @@ const {
   variableElimination 
 } = inferences;
 
-let network = {};
-
-network = addNode(network, rain);
-network = addNode(network, sprinkler);
-network = addNode(network, grassWet);
+const network = createNetwork(rain, sprinkler, grassWet);
 
 const infersSingleNode = (infer) => {
   expect(infer(network, { 'RAIN': 'T' }).toFixed(4)).toBe('0.2000');
