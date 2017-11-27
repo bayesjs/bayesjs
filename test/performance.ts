@@ -1,11 +1,27 @@
 import { addNode, inferences } from '../src/index';
-import { IInfer } from '../src/types/index';
+import { IInfer, INode } from '../src/types/index';
 
 const {
   enumeration,
   junctionTree,
   variableElimination,
 } = inferences;
+
+const createWhen = (parent: string, state: string) => {
+  const when = {};
+  when[parent] = state;
+
+  return when;
+};
+
+const createThen = (states: string[]) => {
+  const value = 1 / states.length;
+  
+  return states.reduce((acc, state) => {
+    acc[state] = value;
+    return acc;
+  }, {});
+}
 
 const createCptStates = (n: number) => {
   const value = 1 / n;
@@ -16,6 +32,21 @@ const createCptStates = (n: number) => {
     json[state] = value;
     return json;
   }, {})
+
+  return {
+    states,
+    cpt
+  }
+}
+
+const createCptStatesWithParent = (n: number, parent: INode) => {
+  const value = 1 / n;
+  const states = Array.from({ length: n })
+    .map((_, i) => `state_${i + 1}`);;
+  const cpt = parent.states.map(state => ({
+      when: createWhen(parent.id, state),
+      then: createThen(states)
+    }));
 
   return {
     states,
@@ -60,7 +91,9 @@ const createLineNetwork = (numberNodes: number, numberCptStates: number = 7) => 
   let lastNode;
   
   for (let i = 1; i <= numberNodes; i++) {
-    const { cpt, states } = createCptStates(numberCptStates);
+    const { cpt, states } = lastNode
+      ? createCptStatesWithParent(numberCptStates, lastNode)
+      : createCptStates(numberCptStates);
     
     const newNode = {
       id: i.toString(),
@@ -75,6 +108,12 @@ const createLineNetwork = (numberNodes: number, numberCptStates: number = 7) => 
 
   return network;
 }
+
+const inferSingleInAChainedNetwork = (netSize: number, infer: IInfer) => {
+  const network = createLineNetwork(netSize, 4);
+
+  infer(network, { '1': '1' });
+};
 
 const inferSingleNodeWithoutLastingForever = (netSize: number, infer: IInfer) => {
   const network = createSuperNetwork(netSize);
@@ -100,13 +139,14 @@ const inferencesNames = {
 const testsNames = {
   'infer single node without lasting forever': inferSingleNodeWithoutLastingForever,
   'infer multiple nodes without lasting forever': inferMultipleNodesWithoutLastingForever,
+  'infer single in a chained network': inferSingleInAChainedNetwork,
 };
 
 
 describe('performance', () => {
   const infers = Object.keys(inferencesNames);
   const tests = Object.keys(testsNames);
-  const networkSizes = Array.from({ length: 10 })
+  const networkSizes = Array.from({ length: 5 })
     .map((_, i) => (i * 25) + 25);
 
   // it('debug', () => {
