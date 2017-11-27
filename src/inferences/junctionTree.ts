@@ -31,6 +31,7 @@ const map = new Map();
 let rootIndex = 0;
 
 export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations): number => {
+  // console.log({ nodes, given });
   const key = getKeyNetwork(network);
   
   let cachedJT2 = map.get(key);
