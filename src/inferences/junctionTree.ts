@@ -23,7 +23,7 @@ import {
   buildMoralGraph, 
   buildTriangulatedGraph, 
   createGraph 
-} from '../graph/index';
+} from '../graphs/index';
 
 const wmJT = new WeakMap();
 const wmKey = new WeakMap();
