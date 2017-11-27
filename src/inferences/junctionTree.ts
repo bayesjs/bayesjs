@@ -2,7 +2,10 @@ import {
   isEqual, 
   intersection, 
   cloneDeep,
-  sum
+  sum,
+  isUndefined,
+  maxBy,
+  minBy,
 } from 'lodash';
 import { 
   INetwork, 
@@ -44,25 +47,53 @@ export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: 
   const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
 
   // TODO: considerar P(A,B,C), por enquanto só P(A)
-  const nodesToInfer = Object.keys(nodes);
-  const nodeToInfer = nodesToInfer[0];//Causa dos teste falharem...
-  const stateToInfer = nodes[nodeToInfer];
-  
-  return getResult(cliques, nodeToInfer, stateToInfer);
+  return getResult(cliques, nodes);
 };
 
-const getResult = (cliques: IClique[], nodeToInfer, stateToInfer) => {
-  const cliquesNode = cliques.filter(x => x.clique.some(y => y === nodeToInfer));
-  const clique = cliquesNode.reduce((maximal, current) => {
-    if (current.clique.length < maximal.clique.length) return current;
-    return maximal;
+const filterPotentialsByNodes = (potentials: ICliquePotentialItem[], nodes: ICombinations): ICliquePotentialItem[] => {
+  return potentials.reduce((acc, potential) => 
+    checkPotentialByNodes(potential, nodes) ? [ ...acc, potential ] : acc 
+  , []);
+}
+
+const checkPotentialByNodes = (potential: ICliquePotentialItem, nodes: ICombinations): boolean => {
+  const { when, then } = potential;
+  const whenNodeIds = Object.keys(when);
+  const nodeIds = Object.keys(nodes);
+
+  return whenNodeIds.every((whenNodeId) => {
+    const whenValue = when[whenNodeId];
+    const nodeValue = nodes[whenNodeId];
+
+    return isUndefined(nodeValue) || whenValue === nodeValue;
   });
-  
-  const values = clique.potentials
-    .filter(x => x.when[nodeToInfer] === stateToInfer)
+}
+
+const filterCliquesByNodes = (cliques: IClique[], nodes?: ICombinations) => {
+  const nodesToInfer = Object.keys(nodes);
+
+  return cliques.filter(clique => 
+    clique.clique.some(nodeId => 
+      nodesToInfer.some(nodeToInfer => 
+        nodeId === nodeToInfer
+      )
+    )
+  );
+};
+
+const getCliqueByLength = (minOrMax) => (cliques: IClique[]) => 
+  minOrMax(cliques, ({ clique }) => clique.length); 
+
+const getMinialCliqueLength = getCliqueByLength(minBy);
+const getMaximalCliqueLength = getCliqueByLength(maxBy);
+
+const getResult = (cliques: IClique[], nodes?: ICombinations) => {
+  const cliquesNode = filterCliquesByNodes(cliques, nodes);
+  const clique = getMaximalCliqueLength(cliquesNode);
+  const potentialsFiltred = filterPotentialsByNodes(clique.potentials, nodes)
     .map(x => x.then);
 
-  return sum(values);
+  return sum(potentialsFiltred);
 }
 
 const getKeyNetwork = (network: INetwork) => {
