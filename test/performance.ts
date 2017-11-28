@@ -148,7 +148,9 @@ const testsNames = {
 };
 
 
-describe('performance', () => {
+describe('performance', function() {
+  this.slow(50);
+  
   const infers = Object.keys(inferencesNames);
   const tests = Object.keys(testsNames);
   const networkSizes = Array.from({ length: 2 })

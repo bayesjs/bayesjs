@@ -102,12 +102,12 @@ const tests = {
   'infers single node': infersSingleNode,
   'infers multiples nodes': infersMultiplesNodes,
   'infers on nodes giving others': inferOnNodesGivingOthers,
-  'infers give Sprinkler True ': infersGiveSprinklerTrue,
-  'infers give Sprinkler False ': infersGiveSprinklerFalse,
-  'infers give Rain True ': infersGiveRainTrue,
-  'infers give Rain False ': infersGiveRainFalse,
-  'infers give Grass Wet True ': infersGiveGrassWetTrue,
-  'infers give Grass Wet False ': infersGiveGrassWetFalse,
+  'infers give Sprinkler True': infersGiveSprinklerTrue,
+  'infers give Sprinkler False': infersGiveSprinklerFalse,
+  'infers give Rain True': infersGiveRainTrue,
+  'infers give Rain False': infersGiveRainFalse,
+  'infers give Grass Wet True': infersGiveGrassWetTrue,
+  'infers give Grass Wet False': infersGiveGrassWetFalse,
 }
 
 describe('infer', () => {
