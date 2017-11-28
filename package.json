@@ -10,7 +10,7 @@
     "build": "webpack -p",
     "watch": "webpack -w",
     "lint": "eslint . && flow",
-    "test": "mocha -r ts-node/register 'test/**/*.ts'"
+    "test": "mocha -r ts-node/register \"test/**/*.ts\""
   },
   "repository": {
     "type": "git",
