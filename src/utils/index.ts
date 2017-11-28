@@ -1,1 +1,2 @@
-export * from './network'
+export * from './network';
+export * from './combinations';

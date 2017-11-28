@@ -86,6 +86,11 @@ const createSuperNetwork = (numberNodes: number, numberCptStates: number = 7) =>
   return network;
 }
 
+/**
+ * Create a network like: P(A), P(B|A), P(C|B), P(D|C)....
+ * @param numberNodes number of nodes in network
+ * @param numberCptStates number of state of each node
+ */
 const createLineNetwork = (numberNodes: number, numberCptStates: number = 7) => {
   let network = {};
   let lastNode;
@@ -146,14 +151,8 @@ const testsNames = {
 describe('performance', () => {
   const infers = Object.keys(inferencesNames);
   const tests = Object.keys(testsNames);
-  const networkSizes = Array.from({ length: 5 })
-    .map((_, i) => (i * 25) + 25);
-
-  // it('debug', () => {
-  //   console.log(
-  //     JSON.stringify(createSuperNetwork(3), null, 2)
-  //   );
-  // })
+  const networkSizes = Array.from({ length: 2 })
+    .map((_, i) => (i * 50) + 50);
 
   for (const testName of tests) {
     const testMethod = testsNames[testName];
@@ -162,7 +161,10 @@ describe('performance', () => {
       const infer = inferencesNames[inferName];
 
       for (const size of networkSizes) {
-        it(`${testName} (${inferName} with ${size} nodes)`, () => testMethod(size, infer))
+        it(
+          `${testName} (${inferName} with ${size} nodes)`, 
+          () => testMethod(size, infer)
+        );
       }
     }
   }

@@ -27,6 +27,7 @@ import {
   buildTriangulatedGraph, 
   createGraph 
 } from '../graphs/index';
+import { buildCombinations } from '../utils/index';
 
 const wmJT = new WeakMap();
 const wmKey = new WeakMap();
@@ -407,31 +408,6 @@ const initializePotentials = (cliques: IClique[], network: INetwork, given: ICom
 
     delete clique.factors;
   }
-};
-
-const buildCombinations = (network: INetwork, nodesToCombine: string[]): ICombinations[] => {
-  const combinations: ICombinations[] = [];
-
-  const makeCombinations = (nodes, acc = {}) => {
-    if (nodes.length === 0) {
-      combinations.push(acc);
-      return;
-    }
-
-    const [ nodeId, ...rest ] = nodes;
-    const states = network[nodeId].states;
-
-    for (const state of states) {
-      makeCombinations(rest, {
-        ...acc,
-        [nodeId]: state
-      });
-    }
-  };
-
-  makeCombinations(nodesToCombine);
-
-  return combinations;
 };
 
 const buildJunctionTree = (cliqueGraph, cliques, sepSets) => {

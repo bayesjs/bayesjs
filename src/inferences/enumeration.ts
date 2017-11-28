@@ -1,5 +1,6 @@
 import * as equal from 'deep-equal';
 import { INetwork, ICombinations, IInfer } from '../types'
+import { buildCombinations } from '../utils/index';
 
 const combinationsCache = new WeakMap();
 
@@ -20,33 +21,6 @@ export const infer: IInfer = (network: INetwork, nodes?: ICombinations, giving?:
   }
 
   return calculateProbabilities(network, filteredCombinations) / probGiving;
-}
-
-function buildCombinations(network: INetwork): ICombinations[] {
-  const combinations: ICombinations[] = [];
-
-  makeCombinations(Object.keys(network));
-
-  return combinations;
-
-  function makeCombinations(nodes: string[], acc: ICombinations = {}): void {
-    if (nodes.length === 0) {
-      combinations.push(acc);
-      return;
-    }
-
-    const [ node, ...rest ] = nodes;
-    const states: string[] = network[node].states;
-
-    for (let i = 0; i < states.length; i++) {
-      const state: string = states[i];
-
-      makeCombinations(rest, {
-        ...acc,
-        [node]: state
-      });
-    }
-  }
 }
 
 function filterCombinations(combinations: ICombinations[], nodesToFilter: ICombinations): ICombinations[] {
