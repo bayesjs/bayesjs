@@ -1,18 +1,15 @@
 import { isNil } from 'lodash';
 
-const getOrStoreMaker = <TKey, TValue>(storage) => (key: TKey, getValue: () => TValue) => {
-  const cached = storage.get(key);
-  if (!isNil(cached)) return cached;
-
-  const result = getValue();
-  storage.set(key, result);
-  return result;
+const getOrStoreMaker = <TKey, TValue>(isStore, getStored, setValue) => (key: TKey, getValue: () => TValue) => {
+  if (isStore(key)) return getStored(key)
+  
+  const value = getValue();
+  setValue(key, value)
+  return value;
 }
 
 const isStoredMaker = <TKey>(storage) => (key: TKey) => {
-  const cached = storage.get(key);
-  
-  return !isNil(cached);
+  return storage.has(key);
 }
 
 const storeMaker = <TKey, TValue>(storage) => (key: TKey, value: TValue) => {
@@ -28,13 +25,11 @@ const removeStoredMaker = <TKey>(storage) => (key: TKey) => {
 }
 
 const createDefaultStorage = <TKey, TValue>(storage: Map<TKey, TValue> | WeakMap<object, TValue>) => {
-  const weak = new WeakMap();
-  const map = new Map();
-  const getOrStore = getOrStoreMaker(storage);
   const isStored = isStoredMaker(storage);
   const getStored = getStoredMaker(storage);
   const store = storeMaker(storage);
   const removeStored = removeStoredMaker(storage);
+  const getOrStore = getOrStoreMaker(isStored, getStored, store);
 
   return {
     getOrStore,
