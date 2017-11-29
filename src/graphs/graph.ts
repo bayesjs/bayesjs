@@ -65,7 +65,7 @@ const cloneMaker = (nodes: string[], edges: IEdge[]) => () => {
   const clonedGraph = createGraph();
   
   for (const node of nodes) {
-    clonedGraph.addNode(node);
+    clonedGraph.addNodeId(node);
   }
 
   for (const edge of edges) {
@@ -86,10 +86,10 @@ export const createGraph = (): IGraph => {
   const nodes: string[] = [];
   const edges: IEdge[] = [];
 
-  const getNodes = () => nodes;
-  const addNode = addNodeMaker(nodes);
-  const removeNode = removeNodesMaker(nodes, edges);
-  const containsNode = containsNodeMaker(nodes);
+  const getNodesId = () => nodes;
+  const addNodeId = addNodeMaker(nodes);
+  const removeNodeId = removeNodesMaker(nodes, edges);
+  const containsNodeId = containsNodeMaker(nodes);
   const addEdge = addEdgeMaker(edges);
   const removeEdge = removeEdgeMaker(edges);
   const areConnected = areConnectedMaker(edges);
@@ -98,10 +98,10 @@ export const createGraph = (): IGraph => {
   const print = printMaker(nodes, edges);
 
   return {
-    addNode,
-    removeNode,
-    getNodes,
-    containsNode,
+    addNodeId,
+    removeNodeId,
+    getNodesId,
+    containsNodeId,
     addEdge,
     removeEdge,
     areConnected,

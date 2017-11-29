@@ -1,9 +1,9 @@
-import { IMoralGraph } from '../types/index';
+import { IGraph } from '../types/index';
 
-export const buildTriangulatedGraph = (moralGraph: IMoralGraph) => {
+export const buildTriangulatedGraph = (moralGraph: IGraph) => {
   const triangulatedGraph = moralGraph.clone();
   const clonedGraph = triangulatedGraph.clone();
-  const nodes = clonedGraph.getNodes();
+  const nodes = clonedGraph.getNodesId();
   const nodesToRemove = [ ...nodes ];
 
   const findLessNeighbors = () => {
@@ -35,7 +35,7 @@ export const buildTriangulatedGraph = (moralGraph: IMoralGraph) => {
         const neighborA = neighbors[i];
         const neighborB = neighbors[j];
 
-        if (!clonedGraph.containsNode(neighborA) || !clonedGraph.containsNode(neighborB)) {
+        if (!clonedGraph.containsNodeId(neighborA) || !clonedGraph.containsNodeId(neighborB)) {
           continue;
         }
 
@@ -46,7 +46,7 @@ export const buildTriangulatedGraph = (moralGraph: IMoralGraph) => {
       }
     }
     
-    clonedGraph.removeNode(nodeToRemove);
+    clonedGraph.removeNodeId(nodeToRemove);
   }
 
   return triangulatedGraph;

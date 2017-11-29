@@ -1,12 +1,13 @@
-import { INetwork, IMoralGraph } from '../types/index';
+import { INetwork, IGraph } from '../types/index';
 import { createGraph } from './graph';
+import { networkToNodeList } from '../utils/index';
 
-export const buildMoralGraph = (network: INetwork): IMoralGraph => {
-  const nodes = Object.keys(network).map(id => network[id]);
+export const buildMoralGraph = (network: INetwork): IGraph => {
+  const nodes = networkToNodeList(network);
   const moralGraph = createGraph();
 
   for (const node of nodes) {
-    moralGraph.addNode(node.id);
+    moralGraph.addNodeId(node.id);
 
     for (const parentId of node.parents) {
       moralGraph.addEdge(parentId, node.id);

@@ -1,8 +1,8 @@
 export interface IGraph {
-  addNode(nodeId: string),
-  removeNode(nodeId: string),
-  getNodes(): string[],
-  containsNode(nodeId: string): boolean,
+  addNodeId(nodeId: string),
+  removeNodeId(nodeId: string),
+  getNodesId(): string[],
+  containsNodeId(nodeId: string): boolean,
   addEdge(nodeA: string, nodeB: string),
   removeEdge(nodeA: string, nodeB: string),
   areConnected(nodeA: string, nodeB: string): boolean,
