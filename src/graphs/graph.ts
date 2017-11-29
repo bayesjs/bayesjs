@@ -43,9 +43,9 @@ const removeEdgeMaker = (edges: IEdge[]) => (nodeA: string, nodeB: string) => {
 }
 
 const areConnectedMaker = (edges: IEdge[]) => (nodeA: string, nodeB: string) => {
-  return edges.some(edge => {
-    return (edge[0] === nodeA && edge[1] === nodeB) || 
-      (edge[0] === nodeB && edge[1] === nodeA);
+  return edges.some(([ edge1, edge2 ]) => {
+    return (edge1 === nodeA && edge2 === nodeB) || 
+      (edge1 === nodeB && edge2 === nodeA);
   });
 };
 
@@ -70,8 +70,8 @@ const cloneMaker = (nodes: string[], edges: IEdge[]) => () => {
     clonedGraph.addNodeId(node);
   }
 
-  for (const edge of edges) {
-    clonedGraph.addEdge(edge[0], edge[1]);
+  for (const [ edge1, edge2 ] of edges) {
+    clonedGraph.addEdge(edge1, edge2);
   }
 
   return clonedGraph;

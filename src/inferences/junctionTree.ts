@@ -132,7 +132,7 @@ export const clearCache = () => {
 const createCliquesInfo = (network: INetwork) => {
   const moralGraph = buildMoralGraph(network);
   const triangulatedGraph = buildTriangulatedGraph(moralGraph);
-  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph, network);
+  const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph);
   const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets);
 
   return {

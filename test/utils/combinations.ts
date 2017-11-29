@@ -4,7 +4,7 @@ import { rain, sprinkler, grassWet } from '../../models/rain-sprinkler-grasswet'
 
 describe('utils', () => {
   describe('combinations', () => {
-    it('buildCombinations should woks', () => {
+    it('buildCombinations with sprinkler network', () => {
       const network = createNetwork(rain, sprinkler, grassWet);
       const combinations = buildCombinations(network);
 
@@ -54,7 +54,7 @@ describe('utils', () => {
       );
     });
 
-    it('buildCombinations given nodes to combine (1)', () => {
+    it('buildCombinations with sprinkler network given nodes to combine (RAIN, SPRINKLER)', () => {
       const network = createNetwork(rain, sprinkler, grassWet);
       const combinations = buildCombinations(network, ['RAIN', 'SPRINKLER']);
 
@@ -80,7 +80,7 @@ describe('utils', () => {
       );
     });
 
-    it('buildCombinations given nodes to combine (2)', () => {
+    it('buildCombinations with sprinkler network given nodes to combine (RAIN, GRASS_WET)', () => {
       const network = createNetwork(rain, sprinkler, grassWet);
       const combinations = buildCombinations(network, ['RAIN', 'GRASS_WET']);
 
@@ -106,7 +106,7 @@ describe('utils', () => {
       );
     });
 
-    it('buildCombinations given nodes to combine (3)', () => {
+    it('buildCombinations with sprinkler network given nodes to combine (RAIN)', () => {
       const network = createNetwork(rain, sprinkler, grassWet);
       const combinations = buildCombinations(network, ['RAIN']);
 

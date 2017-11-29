@@ -1,11 +1,10 @@
-import { IClique, ISepSet, IGraph, INetwork, ICliqueGraph } from '../types/index';
+import { IClique, ISepSet, IGraph, INetwork, ICliqueGraph, INodeList } from '../types/index';
 import { isEqual } from 'lodash';
 import { createGraph } from './index';
 
-export const buildCliqueGraph = (triangulatedGraph: IGraph, net: INetwork): ICliqueGraph => {
-  const cliqueGraph = createGraph();
+const createCliques = (graph: IGraph) => {
+  const nodes = graph.getNodesId();
   const cliques: IClique[] = [];
-  const nodes = triangulatedGraph.getNodesId();
 
   for (let i = 0; i < nodes.length; i++) {
     const clique = [ nodes[i] ];
@@ -15,7 +14,7 @@ export const buildCliqueGraph = (triangulatedGraph: IGraph, net: INetwork): ICli
       // else if (intersection(net[nodes[i]].network, net[nodes[j]].network).length > 0) continue;
       // else if (net[nodes[i]].network !== net[nodes[j]].network) continue;
 
-      if (clique.every(node => triangulatedGraph.areConnected(node, nodes[j]))) {
+      if (clique.every(node => graph.areConnected(node, nodes[j]))) {
         clique.push(nodes[j]);
       }
     }
@@ -30,6 +29,13 @@ export const buildCliqueGraph = (triangulatedGraph: IGraph, net: INetwork): ICli
     }
   }
 
+  return cliques;
+};
+
+export const buildCliqueGraph = (triangulatedGraph: IGraph): ICliqueGraph => {
+  const cliqueGraph = createGraph();
+  const cliques = createCliques(triangulatedGraph);;
+  const nodes = triangulatedGraph.getNodesId();
   const sepSets: ISepSet[] = [];
 
   for (let i = 0; i < cliques.length; i++) {
