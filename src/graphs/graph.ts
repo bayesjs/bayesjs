@@ -1,7 +1,9 @@
 import { 
   IEdge, 
   IGraph,
+  INetwork,
 } from '../types/index';
+import { networkToNodeList } from '../utils/index';
 
 
 const addNodeMaker = (nodes: string[]) => (nodeId: string) =>
@@ -82,11 +84,30 @@ const printMaker = (nodes: string[], edges: IEdge[]) => () => {
   console.dir(edges);
 }
 
-export const createGraph = (): IGraph => {
-  const nodes: string[] = [];
-  const edges: IEdge[] = [];
+const createNodesAndEdgesByNetwork = (network?: INetwork) => {
+  const allNodes = network 
+    ? networkToNodeList(network)
+    : [];
+
+  const nodes = allNodes.map(node => node.id);
+  const edges = allNodes.reduce((acc, node) => {
+    for (const parentId of node.parents) {
+      acc.push([ parentId, node.id ]);
+    }
+    return acc;
+  }, [] as IEdge[])
+  
+  return {
+    nodes,
+    edges
+  };
+}
+
+export const createGraph = (network?: INetwork): IGraph => {
+  const { nodes, edges } = createNodesAndEdgesByNetwork(network);
 
   const getNodesId = () => nodes;
+  const getEdges = () => edges;
   const addNodeId = addNodeMaker(nodes);
   const removeNodeId = removeNodesMaker(nodes, edges);
   const containsNodeId = containsNodeMaker(nodes);
@@ -101,6 +122,7 @@ export const createGraph = (): IGraph => {
     addNodeId,
     removeNodeId,
     getNodesId,
+    getEdges,
     containsNodeId,
     addEdge,
     removeEdge,

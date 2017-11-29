@@ -23,8 +23,7 @@ import {
 import hash from 'object-hash';
 import { 
   buildMoralGraph, 
-  buildTriangulatedGraph, 
-  createGraph 
+  buildTriangulatedGraph 
 } from '../graphs/index';
 import { buildCombinations, flager } from '../utils/index';
 import { buildCliqueGraph } from '../graphs/cliqueGraph';
