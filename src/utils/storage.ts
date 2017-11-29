@@ -24,6 +24,10 @@ const removeStoredMaker = <TKey>(storage) => (key: TKey) => {
   storage.delete(key);
 }
 
+const cleanMaker = <TKey>(storage) => () => {
+  storage.clear();
+}
+
 const createDefaultStorage = <TKey, TValue>(storage: Map<TKey, TValue> | WeakMap<object, TValue>) => {
   const isStored = isStoredMaker(storage);
   const getStored = getStoredMaker(storage);
@@ -45,6 +49,12 @@ export const createWeakStorage = <TKey extends object, TValue>(storage?: WeakMap
 };
 
 export const createStorage = <TKey, TValue>(storage?: Map<TKey, TValue>) => {
-  return createDefaultStorage(storage || new Map());
+  const store = storage || new Map();
+  const clear = cleanMaker(store);
+  
+  return {
+    ...createDefaultStorage(store),
+    clear,
+  };
 };
 
