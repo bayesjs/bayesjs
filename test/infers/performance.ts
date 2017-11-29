@@ -1,5 +1,5 @@
-import { addNode, inferences } from '../src/index';
-import { IInfer, INode } from '../src/types/index';
+import { addNode, inferences, infer } from '../../src/index';
+import { IInfer, INode } from '../../src/types/index';
 
 const {
   enumeration,
@@ -114,25 +114,31 @@ const createLineNetwork = (numberNodes: number, numberCptStates: number = 7) => 
   return network;
 }
 
-const inferSingleInAChainedNetwork = (netSize: number, infer: IInfer) => {
+const inferSingleInAChainedNetwork = (netSize: number) => {
   const network = createLineNetwork(netSize, 4);
 
-  infer(network, { '1': '1' });
+  return (infer: IInfer) => {
+    infer(network, { '1': '1' });
+  };
 };
 
-const inferSingleNodeWithoutLastingForever = (netSize: number, infer: IInfer) => {
+const inferSingleNodeWithoutLastingForever = (netSize: number) => {
   const network = createSuperNetwork(netSize);
 
-  infer(network, { 'AAA': '1' });
-  infer(network, { '1': '1' });
-  infer(network, { '2': '1' });
-  infer(network, { '3': '1' });
+  return (infer: IInfer) => {
+    infer(network, { 'AAA': '1' });
+    infer(network, { '1': '1' });
+    infer(network, { '2': '1' });
+    infer(network, { '3': '1' });
+  };
 };
 
-const inferMultipleNodesWithoutLastingForever = (netSize: number, infer: IInfer) => {
+const inferMultipleNodesWithoutLastingForever = (netSize: number) => {
   const network = createSuperNetwork(netSize);
 
-  infer(network, { 'AAA': '1', '1': '1', '2': '1', '3': '1' });
+  return (infer: IInfer) => {
+    infer(network, { 'AAA': '1', '1': '1', '2': '1', '3': '1' });
+  };
 }
 
 const inferencesNames = {
@@ -148,26 +154,29 @@ const testsNames = {
 };
 
 
-describe('performance', function() {
-  this.slow(50);
-  
-  const infers = Object.keys(inferencesNames);
-  const tests = Object.keys(testsNames);
-  const networkSizes = Array.from({ length: 2 })
-    .map((_, i) => (i * 50) + 50);
+describe('infers', () => {
+  describe('performance', function() {
+    this.slow(50);
+    
+    const infers = Object.keys(inferencesNames);
+    const tests = Object.keys(testsNames);
+    const networkSizes = Array.from({ length: 2 })
+      .map((_, i) => (i * 50) + 50);
 
-  for (const testName of tests) {
-    const testMethod = testsNames[testName];
+    for (const testName of tests) {
+      const createNetwork = testsNames[testName];
 
-    for (const inferName of infers) {
-      const infer = inferencesNames[inferName];
+      for (const inferName of infers) {
+        const infer = inferencesNames[inferName];
 
-      for (const size of networkSizes) {
-        it(
-          `${testName} (${inferName} with ${size} nodes)`, 
-          () => testMethod(size, infer)
-        );
+        for (const size of networkSizes) {
+          const testMethod = createNetwork(size);
+          it(
+            `${testName} (${inferName} with ${size} nodes)`, 
+            () => testMethod(infer)
+          );
+        }
       }
     }
-  }
+  });
 });

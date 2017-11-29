@@ -186,13 +186,13 @@ const createMessage = (combinations: ICombinations[], potentials: ICliquePotenti
 
   for (const { when } of initCombs) {
     const keys = Object.keys(when);
-    const newThen = potentials
-      .filter(potential => keys.every(x => when[x] === potential.when[x]))
-      .map(x => x.then)
-      .reduce((acc, x) => acc + x);
+    const potentialsThen = potentials
+      .filter(potential => keys.every(key => when[key] === potential.when[key]))
+      .map(x => x.then);
+    const then = sum(potentialsThen);
       
       message.push({
-        then: newThen,
+        then,
         when: cloneDeep(when),
       });
   }
