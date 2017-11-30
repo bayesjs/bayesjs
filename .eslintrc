@@ -1,6 +1,32 @@
 {
-  "extends": "fhelwanger/es6",
   "parserOptions": {
+    "ecmaVersion": 6,
     "sourceType": "module"
-  }
+  },
+  "env": {
+    "es6": true
+  },
+  "rules": {
+    "arrow-parens": [ 2, "as-needed" ],
+    "arrow-spacing": 2,
+    "constructor-super": 2,
+    "generator-star-spacing": [ 2, {
+      "before": false,
+      "after": true
+    }],
+    "no-var": 2,
+    "object-shorthand": 2,
+    "prefer-const": 2,
+    "prefer-spread": 2,
+    "require-yield": 2,
+    "no-unused-vars": "warn",
+    "strict": "warn",
+    "no-debugger": "warn",
+    "no-empty": "warn",
+    "no-extra-semi": "warn",
+    "no-unreachable": "error",
+    "no-alert": "warn",
+    "no-empty-function": "warn"
+  },
+  "parser": "typescript-eslint-parser"
 }
