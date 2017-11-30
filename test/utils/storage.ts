@@ -1,8 +1,7 @@
 import * as expect from 'expect';
 import { createWeakStorage, createStorage } from '../../src/utils/index';
 
-
-const shouldStoreValue = (storage) => {
+const shouldStoreValue = storage => {
   const key = { foo: 'bar'};
   const value = { name: 'Jonas' };
 
@@ -12,7 +11,7 @@ const shouldStoreValue = (storage) => {
   expect(storage.getStored(key)).toEqual(value);
 };
 
-const shouldRemoveValue = (storage) => {
+const shouldRemoveValue = storage => {
   const key = { foo: 'bar'};
   const value = { name: 'Jonas' };
 
@@ -21,7 +20,7 @@ const shouldRemoveValue = (storage) => {
   expect(storage.isStored(key)).toBeFalsy();
 };
 
-const shouldStoreIfValueDoesntExists = (storage) => {
+const shouldStoreIfValueDoesntExists = storage => {
   const key = { foo: 'bar'};
   const value1 = { name: 'Jonas' };
   const valueStored1 = storage.getOrStore(key, () => value1);
@@ -31,7 +30,7 @@ const shouldStoreIfValueDoesntExists = (storage) => {
   expect(storage.isStored(key)).toBeTruthy();
 }
 
-const shouldNotStoreIfValueExists = (storage) => {
+const shouldNotStoreIfValueExists = storage => {
   const key = { foo: 'bar'};
   const value1 = { name: 'Jonas' };
   const value2 = { name: 'Philip' };
@@ -85,7 +84,7 @@ describe('utils', () => {
       storage.clear();
       
       const allNotStorage = keys.every(key => !storage.isStored(key));
-      expect(allStorage).toBeTruthy();
+      expect(allNotStorage).toBeTruthy();
     })
   });
 });

@@ -1,5 +1,4 @@
 import { INetwork, ICombinations } from '../types/index';
-import { isNull } from 'lodash';
 
 const makeCombinations = (network: INetwork, combinations: ICombinations[], nodes: string[], acc = {}) => {
   if (nodes.length === 0) {

@@ -1,4 +1,4 @@
-import { addNode, inferences, infer } from '../../src/index';
+import { addNode, inferences } from '../../src/index';
 import { IInfer, INode } from '../../src/types/index';
 
 const {
@@ -42,7 +42,7 @@ const createCptStates = (n: number) => {
 const createCptStatesWithParent = (n: number, parent: INode) => {
   const value = 1 / n;
   const states = Array.from({ length: n })
-    .map((_, i) => `state_${i + 1}`);;
+    .map((_, i) => `state_${i + 1}`);
   const cpt = parent.states.map(state => ({
       when: createWhen(parent.id, state),
       then: createThen(states)

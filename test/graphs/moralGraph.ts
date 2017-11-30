@@ -1,5 +1,5 @@
 import * as expect from 'expect';
-import { createGraph, buildMoralGraph } from '../../src/graphs';
+import { buildMoralGraph } from '../../src/graphs';
 import { rain, sprinkler, grassWet } from '../../models/rain-sprinkler-grasswet';
 import { createNetwork } from '../../src/utils';
 

@@ -34,8 +34,7 @@ const createCliques = (graph: IGraph) => {
 
 export const buildCliqueGraph = (triangulatedGraph: IGraph): ICliqueGraph => {
   const cliqueGraph = createGraph();
-  const cliques = createCliques(triangulatedGraph);;
-  const nodes = triangulatedGraph.getNodesId();
+  const cliques = createCliques(triangulatedGraph);
   const sepSets: ISepSet[] = [];
 
   for (let i = 0; i < cliques.length; i++) {

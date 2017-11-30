@@ -12,7 +12,7 @@ const {
 
 const network = createNetwork(rain, sprinkler, grassWet);
 
-const infersSingleNode = (infer) => {
+const infersSingleNode = infer => {
   expect(infer(network, { 'RAIN': 'T' }).toFixed(4)).toBe('0.2000');
   expect(infer(network, { 'RAIN': 'F' }).toFixed(4)).toBe('0.8000');
   expect(infer(network, { 'SPRINKLER': 'T' }).toFixed(4)).toBe('0.3220');
@@ -35,7 +35,7 @@ const inferOnNodesGivingOthers = (infer: IInfer) => {
   const nodeToInfer = { 'RAIN': 'T' };
   const giving = { 'GRASS_WET': 'T' };
 
-  expect(infer(network, { 'RAIN': 'T' }, { 'GRASS_WET': 'T' }).toFixed(4)).toBe('0.3577');
+  expect(infer(network, nodeToInfer, giving).toFixed(4)).toBe('0.3577');
 };
 
 

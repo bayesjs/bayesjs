@@ -1,5 +1,5 @@
 import * as expect from 'expect';
-import { addNode, infer } from '../src/index';
+import { addNode } from '../src/index';
 import { rain, sprinkler, grassWet } from '../models/rain-sprinkler-grasswet';
 import { INode } from '../src/types/index';
 

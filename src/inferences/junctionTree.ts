@@ -61,7 +61,7 @@ const checkPotentialByNodes = (potential: ICliquePotentialItem, nodes: ICombinat
   const whenNodeIds = Object.keys(when);
   const nodeIds = Object.keys(nodes);
 
-  return whenNodeIds.every((whenNodeId) => {
+  return whenNodeIds.every(whenNodeId => {
     const whenValue = when[whenNodeId];
     const nodeValue = nodes[whenNodeId];
 
@@ -81,10 +81,10 @@ const filterCliquesByNodes = (cliques: IClique[], nodes?: ICombinations) => {
   );
 };
 
-const getCliqueByLength = (minOrMax) => (cliques: IClique[]) => 
+const getCliqueByLength = minOrMax => (cliques: IClique[]) => 
   minOrMax(cliques, ({ clique }) => clique.length); 
 
-const getMinialCliqueLength = getCliqueByLength(minBy);
+const getMinimalCliqueLength = getCliqueByLength(minBy);
 const getMaximalCliqueLength = getCliqueByLength(maxBy);
 
 const getResult = (cliques: IClique[], nodes?: ICombinations) => {
@@ -114,7 +114,7 @@ const getKeyNetwork = (network: INetwork) => {
   return key;
 };
 
-const getKeyGiven = (given) => {
+const getKeyGiven = given => {
   const keys = Object.keys(given);
   
   if (keys.length) {
@@ -201,7 +201,7 @@ const createMessage = (combinations: ICombinations[], potentials: ICliquePotenti
     for (const row of message) {
       const { when, then } = row;
       const whenKeys = Object.keys(when);
-      const mr = messageReceived.find((mr) => whenKeys.every(wk => mr.when[wk] === when[wk]));
+      const mr = messageReceived.find(mr => whenKeys.every(wk => mr.when[wk] === when[wk]));
       const value = then / (mr.then || 1);
       
       row.then = value;
@@ -325,7 +325,7 @@ const initializePotentials = (cliques: IClique[], network: INetwork, given: ICom
       const inter = intersection(givenKeys, combKeys);
       
       if (combKeys.length) {
-        const all = inter.every((gk) => comb[gk] == given[gk]);
+        const all = inter.every(gk => comb[gk] == given[gk]);
         
         return all ? 1 : 0;
       }

@@ -1,5 +1,3 @@
-import { isNil } from 'lodash';
-
 const getOrStoreMaker = <TKey, TValue>(isStore, getStored, setValue) => (key: TKey, getValue: () => TValue) => {
   if (isStore(key)) return getStored(key)
   
