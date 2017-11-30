@@ -20,13 +20,23 @@
     "prefer-spread": 2,
     "require-yield": 2,
     "no-unused-vars": "warn",
+    "no-delete-var": "warn",
+    "no-undef":"warn",
     "strict": "warn",
     "no-debugger": "warn",
     "no-empty": "warn",
     "no-extra-semi": "warn",
     "no-unreachable": "error",
     "no-alert": "warn",
-    "no-empty-function": "warn"
+    "no-empty-function": "warn",
+    "no-octal": "error",
+    "no-redeclare": "error",
+    "no-self-assign": "error",
+    "no-unused-labels": "error",
+    "no-useless-escape": "warn",
+    "wrap-iife": "error",
+    "yoda": "warn",
+    "no-mixed-spaces-and-tabs": "error"
   },
   "parser": "typescript-eslint-parser"
 }
