@@ -28,3 +28,5 @@ export const grassWet: INode = {
     { when: { 'RAIN': 'F', 'SPRINKLER': 'F' }, then: { 'T': 0, 'F': 1 } }
   ]
 };
+
+export const allNodes = [rain, sprinkler, grassWet];

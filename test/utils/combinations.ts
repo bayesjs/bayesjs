@@ -1,11 +1,11 @@
 import * as expect from 'expect';
 import { buildCombinations, createNetwork } from '../../src/utils/index';
-import { rain, sprinkler, grassWet } from '../../models/rain-sprinkler-grasswet';
+import { allNodes } from '../../models/rain-sprinkler-grasswet';
 
 describe('utils', () => {
   describe('combinations', () => {
     it('buildCombinations with sprinkler network', () => {
-      const network = createNetwork(rain, sprinkler, grassWet);
+      const network = createNetwork(...allNodes);
       const combinations = buildCombinations(network);
 
       expect(combinations).toEqual(
@@ -55,7 +55,7 @@ describe('utils', () => {
     });
 
     it('buildCombinations with sprinkler network given nodes to combine (RAIN, SPRINKLER)', () => {
-      const network = createNetwork(rain, sprinkler, grassWet);
+      const network = createNetwork(...allNodes);
       const combinations = buildCombinations(network, ['RAIN', 'SPRINKLER']);
 
       expect(combinations).toEqual(
@@ -81,7 +81,7 @@ describe('utils', () => {
     });
 
     it('buildCombinations with sprinkler network given nodes to combine (RAIN, GRASS_WET)', () => {
-      const network = createNetwork(rain, sprinkler, grassWet);
+      const network = createNetwork(...allNodes);
       const combinations = buildCombinations(network, ['RAIN', 'GRASS_WET']);
 
       expect(combinations).toEqual(
@@ -107,7 +107,7 @@ describe('utils', () => {
     });
 
     it('buildCombinations with sprinkler network given nodes to combine (RAIN)', () => {
-      const network = createNetwork(rain, sprinkler, grassWet);
+      const network = createNetwork(...allNodes);
       const combinations = buildCombinations(network, ['RAIN']);
 
       expect(combinations).toEqual(
