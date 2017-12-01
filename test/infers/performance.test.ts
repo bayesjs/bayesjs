@@ -156,25 +156,26 @@ const testsNames = {
 
 describe('infers', () => {
   describe('performance', () => {
-    const infers = Object.keys(inferencesNames);
-    const tests = Object.keys(testsNames);
-    const networkSizes = Array.from({ length: 2 })
-      .map((_, i) => (i * 50) + 50);
+    it('disabled', () => {});
+    // const infers = Object.keys(inferencesNames);
+    // const tests = Object.keys(testsNames);
+    // const networkSizes = Array.from({ length: 2 })
+    //   .map((_, i) => (i * 50) + 50);
 
-    for (const testName of tests) {
-      const createNetwork = testsNames[testName];
+    // for (const testName of tests) {
+    //   const createNetwork = testsNames[testName];
 
-      for (const inferName of infers) {
-        const infer = inferencesNames[inferName];
+    //   for (const inferName of infers) {
+    //     const infer = inferencesNames[inferName];
 
-        for (const size of networkSizes) {
-          const testMethod = createNetwork(size);
-          it(
-            `${testName} (${inferName} with ${size} nodes)`, 
-            () => testMethod(infer)
-          );
-        }
-      }
-    }
+    //     for (const size of networkSizes) {
+    //       const testMethod = createNetwork(size);
+    //       it(
+    //         `${testName} (${inferName} with ${size} nodes)`, 
+    //         () => testMethod(infer)
+    //       );
+    //     }
+    //   }
+    // }
   });
 });
