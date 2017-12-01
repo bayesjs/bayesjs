@@ -45,3 +45,5 @@ export const maryCalls: INode = {
     { when: { 'ALARM': 'F' }, then: { 'T': 0.01, 'F': 0.99 } }
   ]
 };
+
+export const allNodes = [burglary, earthquake, alarm, johnCalls, maryCalls];

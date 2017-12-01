@@ -1,6 +1,6 @@
 import * as expect from 'expect';
 import { inferences } from '../../src/index';
-import { rain, sprinkler, grassWet } from '../../models/rain-sprinkler-grasswet';
+import { allNodes } from '../../models/rain-sprinkler-grasswet';
 import { IInfer } from '../../src/types/index';
 import { createNetwork } from '../../src/utils';
 
@@ -10,7 +10,7 @@ const {
   variableElimination 
 } = inferences;
 
-const network = createNetwork(rain, sprinkler, grassWet);
+const network = createNetwork(...allNodes);
 
 const infersGiveSprinklerTrue = (infer: IInfer) => {
   const given = { 'SPRINKLER': 'T' };

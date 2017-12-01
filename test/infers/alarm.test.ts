@@ -2,7 +2,7 @@ import * as expect from 'expect';
 import { inferences } from '../../src/index';
 import { IInfer } from '../../src/types/index';
 import { createNetwork } from '../../src/utils';
-import { burglary, alarm, earthquake, johnCalls, maryCalls } from '../../models/alarm';
+import { allNodes } from '../../models/alarm';
 
 const { 
   enumeration, 
@@ -10,7 +10,7 @@ const {
   variableElimination 
 } = inferences;
 
-const network = createNetwork(burglary, earthquake, alarm, johnCalls, maryCalls);
+const network = createNetwork(...allNodes);
 
 const infersAlarmGiveBurglaryTrue = (infer: IInfer) => {
   const given = { 'BURGLARY': 'T' };

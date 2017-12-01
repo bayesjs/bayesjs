@@ -1,7 +1,7 @@
 import * as expect from 'expect';
 import { createGraph } from '../../src/graphs/graph';
 import { createNetwork } from '../../src/utils/index';
-import { rain, sprinkler, grassWet } from '../../models/rain-sprinkler-grasswet';
+import { allNodes } from '../../models/rain-sprinkler-grasswet';
 
 describe('graphs', () => {
   describe('graph', () => {
@@ -21,7 +21,7 @@ describe('graphs', () => {
     });
 
     it('should create a graph given a network', () => {
-      const network = createNetwork(rain, sprinkler, grassWet);
+      const network = createNetwork(...allNodes);
       const graph = createGraph(network);
       const nodeIds = graph.getNodesId();
       const edges = graph.getEdges();
