@@ -20,7 +20,7 @@ const areEmpty = (...lists: string[][]) => {
   return lists.every(list => isEmpty(list));
 }
 
-const getPivots = (P: string[], X: string[], graph: IGraph): string[] => {
+const getPivotsMaker = (graph: IGraph) => (P: string[], X: string[]): string[] => {
   return union(P, X).reduce((selected, nodeId) => {
     const t = intersection(graph.getNeighborsOf(nodeId), P);
 
@@ -35,15 +35,18 @@ const aNotInB = (a: string[], b: string[]): string[] => {
 };
 
 export const bronKerbosch2Maker = (graph: IGraph, onFindClique: (clique: string[]) => void) => {
+  const getPivots = getPivotsMaker(graph);
+
   const bronKerbosch2 = (R: string[], P: string[], X: string[]) => {
     if (areEmpty(P, X)) {
       onFindClique(R);
     }
 
-    const pivots = getPivots(P, X, graph);
+    const pivots = getPivots(P, X);
 
     for (const v of aNotInB(P, pivots)) {
       const neighbors = graph.getNeighborsOf(v);
+      
       bronKerbosch2(
         [ ...R, v], 
         intersection(P, neighbors), 

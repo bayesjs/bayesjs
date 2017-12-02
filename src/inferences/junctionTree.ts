@@ -25,25 +25,20 @@ import {
   buildMoralGraph, 
   buildTriangulatedGraph 
 } from '../graphs/index';
-import { buildCombinations, flager } from '../utils/index';
+import { buildCombinations, flager, createStorage, createWeakStorage } from '../utils/index';
 import { buildCliqueGraph } from '../graphs/cliqueGraph';
 
-const wmJT = new WeakMap();
-const wmKey = new WeakMap();
-const map = new Map();
+
+const storageNetworkKey = createWeakStorage();
+const storageCliques = createStorage();
 
 export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations): number => {
-  // console.log({ nodes, given });
   const key = getKeyNetwork(network);
-  
-  let cachedJT2 = map.get(key);
-  
-  if (cachedJT2 === undefined) {
-    map.clear();
-    cachedJT2 = createCliquesInfo(network);
-    map.set(key, cachedJT2);  
-  }
-  const { emptyCliques, sepSets, junctionTree } = cachedJT2;
+  const cliquesInfo = storageCliques.getOrStore(key, () => {
+    storageCliques.clear();
+    return createCliquesInfo(network)
+  });
+  const { emptyCliques, sepSets, junctionTree } = cliquesInfo;
   const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
 
   // TODO: considerar P(A,B,C), por enquanto só P(A)
@@ -97,21 +92,16 @@ const getResult = (cliques: IClique[], nodes?: ICombinations) => {
 }
 
 const getKeyNetwork = (network: INetwork) => {
-  const keyCached = wmKey.get(network);
-
-  if (keyCached) return keyCached;
-
-  const obj = Object.keys(network)
-    .reduce((p, nodeId) => {
-      const { id, parents, states, cpt } = network[nodeId];
-      p[id] = { id, parents, states, cpt };
-      return p;
-    }, {});
-  
-  const key = JSON.stringify(obj);
-  
-  wmKey.set(network, key);
-  return key;
+  return storageNetworkKey.getOrStore(network, () => {
+    const obj = Object.keys(network)
+      .reduce((p, nodeId) => {
+        const { id, parents, states, cpt } = network[nodeId];
+        p[id] = { id, parents, states, cpt };
+        return p;
+      }, {});
+    
+    return JSON.stringify(obj);  
+  })
 };
 
 const getKeyGiven = given => {
@@ -126,7 +116,7 @@ const getKeyGiven = given => {
 };
 
 export const clearCache = () => {
-  map.clear();
+  storageCliques.clear();
 }
 
 const createCliquesInfo = (network: INetwork) => {
@@ -144,15 +134,13 @@ const createCliquesInfo = (network: INetwork) => {
 
 const propagationCliques = (cliques: IClique[], network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], given: ICombinations = {}) => {
   const key = getKeyGiven(given);
-  const cached = map.get(key);
-  if (cached !== undefined) return cached;
-  
-  initializePotentials(cliques, network, given);
-  globalPropagation(network, junctionTree, cliques, sepSets);
 
-  const result = normalize(cliques);
-  map.set(key, result);
-  return result;
+  return storageCliques.getOrStore(key, () => {
+    initializePotentials(cliques, network, given);
+    globalPropagation(network, junctionTree, cliques, sepSets);
+  
+    return normalize(cliques);
+  });
 };
 
 const normalize = (cliques: IClique[]) => {
