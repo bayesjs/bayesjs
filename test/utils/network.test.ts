@@ -62,7 +62,7 @@ describe('utils', () => {
     it('networkToNodeList should create a network given nodes in any order', () => {
       const list = [burglary, earthquake, alarm, johnCalls, maryCalls];
 
-      allCombinationsHeap(list, (combination) => 
+      allCombinationsHeap(list, combination => 
         expect(createNetwork(burglary, earthquake, alarm, johnCalls, maryCalls)).toBeTruthy()
       );
     });

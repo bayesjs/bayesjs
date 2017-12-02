@@ -4,7 +4,7 @@ import { IGraph, IClique } from '../types/index';
 export const findCliques = (graph: IGraph): IClique[] => {
   let id = 0;
   const cliques: IClique[] = [];
-  const { bronKerbosch2 } = bronKerbosch2Maker(graph, (clique) => {
+  const { bronKerbosch2 } = bronKerbosch2Maker(graph, clique => {
     cliques.push({
       id: `${id++}`,
       clique

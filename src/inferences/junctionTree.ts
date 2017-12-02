@@ -4,8 +4,10 @@ import {
   cloneDeep,
   sum,
   isUndefined,
-  maxBy,
   minBy,
+  maxBy,
+  multiply,
+  divide,
 } from 'lodash';
 import { 
   INetwork, 
@@ -18,33 +20,34 @@ import {
   ICliquePotentialItem,
   ICptWithParents,
   IEdge,
-  IGraph
+  IGraph,
+  IStorage,
+  IWeakStorage
 } from '../types/index';
 import hash from 'object-hash';
 import { 
   buildMoralGraph, 
   buildTriangulatedGraph 
 } from '../graphs/index';
-import { buildCombinations, flager } from '../utils/index';
+import { buildCombinations, flager, createStorage, createWeakStorage } from '../utils/index';
 import { buildCliqueGraph } from '../graphs/cliqueGraph';
 
-const wmJT = new WeakMap();
 const wmKey = new WeakMap();
 const map = new Map();
 
 export const infer: IInfer = (network: INetwork, nodes?: ICombinations, given?: ICombinations): number => {
-  // console.log({ nodes, given });
-  const key = getKeyNetwork(network);
-  
-  let cachedJT2 = map.get(key);
-  
-  if (cachedJT2 === undefined) {
-    map.clear();
-    cachedJT2 = createCliquesInfo(network);
-    map.set(key, cachedJT2);  
-  }
-  const { emptyCliques, sepSets, junctionTree } = cachedJT2;
-  const cliques = propagationCliques(emptyCliques, network, junctionTree, sepSets, given);
+  const storage = createStorage(map);
+  const weakStorage = createWeakStorage(wmKey);
+  const key = getKeyNetwork(weakStorage, network);
+  const cliqueInfos = storage.getOrStore(
+    key, 
+    () => {
+      storage.clear();
+      return createCliquesInfo(network)
+    }
+  )
+  const { emptyCliques, sepSets, junctionTree } = cliqueInfos;
+  const cliques = propagationCliques(storage, emptyCliques, network, junctionTree, sepSets, given);
 
   // TODO: considerar P(A,B,C), por enquanto só P(A)
   return getResult(cliques, nodes);
@@ -84,34 +87,32 @@ const filterCliquesByNodes = (cliques: IClique[], nodes?: ICombinations) => {
 const getCliqueByLength = minOrMax => (cliques: IClique[]) => 
   minOrMax(cliques, ({ clique }) => clique.length); 
 
-const getMinimalCliqueLength = getCliqueByLength(minBy);
 const getMaximalCliqueLength = getCliqueByLength(maxBy);
+const getMinimalCliqueLength = getCliqueByLength(maxBy);
 
 const getResult = (cliques: IClique[], nodes?: ICombinations) => {
   const cliquesNode = filterCliquesByNodes(cliques, nodes);
   const clique = getMaximalCliqueLength(cliquesNode);
   const potentialsFiltred = filterPotentialsByNodes(clique.potentials, nodes)
     .map(x => x.then);
-
+  
   return sum(potentialsFiltred);
 }
 
-const getKeyNetwork = (network: INetwork) => {
-  const keyCached = wmKey.get(network);
-
-  if (keyCached) return keyCached;
-
-  const obj = Object.keys(network)
-    .reduce((p, nodeId) => {
-      const { id, parents, states, cpt } = network[nodeId];
-      p[id] = { id, parents, states, cpt };
-      return p;
-    }, {});
-  
-  const key = JSON.stringify(obj);
-  
-  wmKey.set(network, key);
-  return key;
+const getKeyNetwork = (storage: IWeakStorage<INetwork, string>, network: INetwork) => {
+  return storage.getOrStore(
+    network,
+    () => {
+      const obj = Object.keys(network)
+        .reduce((p, nodeId) => {
+          const { id, parents, states, cpt } = network[nodeId];
+          p[id] = { id, parents, states, cpt };
+          return p;
+        }, {});
+      
+      return JSON.stringify(obj);
+    }
+  );
 };
 
 const getKeyGiven = given => {
@@ -142,17 +143,29 @@ const createCliquesInfo = (network: INetwork) => {
   };
 };
 
-const propagationCliques = (cliques: IClique[], network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], given: ICombinations = {}) => {
-  const key = getKeyGiven(given);
-  const cached = map.get(key);
-  if (cached !== undefined) return cached;
-  
-  initializePotentials(cliques, network, given);
-  globalPropagation(network, junctionTree, cliques, sepSets);
+const showCliques = (str: string, cliques: IClique[]) => {
+  // console.log(
+  //   str,
+  //   cliques.map(clique =>
+  //     sum(clique.potentials.map(p => p.then))
+  //   )
+  // )
+}
 
-  const result = normalize(cliques);
-  map.set(key, result);
-  return result;
+const propagationCliques = (storage: IStorage<string, IClique[]>, cliques: IClique[], network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], given: ICombinations = {}) => {
+  const key = getKeyGiven(given);
+
+  return storage.getOrStore(
+    key,
+    () => {
+      initializePotentials(cliques, network, given);
+      showCliques('before', cliques);
+      globalPropagation(network, junctionTree, cliques, sepSets);
+      showCliques('after', cliques);
+      
+      return normalize(cliques);
+    }
+  );
 };
 
 const normalize = (cliques: IClique[]) => {
@@ -168,7 +181,7 @@ const normalizePotentials = (potentials: ICliquePotentialItem[]) => {
   
   return potentials.map(({ when, then }) => ({
     when,
-    then: then / sum,
+    then: divide(then, sum),
   }));
 }
 
@@ -202,7 +215,7 @@ const createMessage = (combinations: ICombinations[], potentials: ICliquePotenti
       const { when, then } = row;
       const whenKeys = Object.keys(when);
       const mr = messageReceived.find(mr => whenKeys.every(wk => mr.when[wk] === when[wk]));
-      const value = then / (mr.then || 1);
+      const value = divide(then, (mr.then || 1));
       
       row.then = value;
     }
@@ -222,13 +235,13 @@ const divideMessage = (clique: IClique, message) => {
           return keys.every(x => row.when[x] === potential.when[x]);
         })
         .forEach(potential => {
-          potential.then = potential.then / row.then;
+          potential.then = divide(potential.then, row.then);
         });
     }
   }
 };
 
-const absorvMessage = (clique: IClique, message) => {
+const absorvMessage = (clique: IClique, message: ICliquePotentialItem[]) => {
   if (message.length) {
     const keys = Object.keys(message[0].when);
 
@@ -238,7 +251,7 @@ const absorvMessage = (clique: IClique, message) => {
           return keys.every(x => row.when[x] === potential.when[x]);
         })
         .forEach(potential => {
-          potential.then = potential.then * row.then;
+          potential.then = multiply(potential.then, row.then)
         });
     }
   }
@@ -367,9 +380,9 @@ const initializePotentials = (cliques: IClique[], network: INetwork, given: ICom
 
             const cptRow = (<ICptWithParents>factor.cpt).find(x => isEqual(x.when, when));
 
-            value *= cptRow.then[combination[factorId]];
+            value = multiply(value, cptRow.then[combination[factorId]]);
           } else {
-            value *= factor.cpt[combination[factorId]];
+            value = multiply(value, factor.cpt[combination[factorId]]);
           }
         }
       }

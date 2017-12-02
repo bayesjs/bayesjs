@@ -5,7 +5,7 @@ import { burglary, earthquake, alarm, johnCalls, maryCalls } from '../../models/
 import { createNetwork } from '../../src/utils';
 import { buildCliqueGraph } from '../../src/graphs/cliqueGraph';
 
-const getTriangulatedGraph = (network) => {
+const getTriangulatedGraph = network => {
   const moralGraph = buildMoralGraph(network);
   return buildTriangulatedGraph(moralGraph);
 }
