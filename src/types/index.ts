@@ -14,4 +14,6 @@ export * from './ISepSet';
 export * from './IEdge';
 export * from './IGraph';
 export * from './ICliqueGraph';
+export * from './IStorage';
+export * from './IWeakStorage';
 

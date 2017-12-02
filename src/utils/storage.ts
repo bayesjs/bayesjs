@@ -1,3 +1,5 @@
+import { IStorage, IWeakStorage } from '../types/index';
+
 const getOrStoreMaker = <TKey, TValue>(isStore, getStored, setValue) => (key: TKey, getValue: () => TValue) => {
   if (isStore(key)) return getStored(key)
   
@@ -42,11 +44,11 @@ const createDefaultStorage = <TKey, TValue>(storage: Map<TKey, TValue> | WeakMap
   };
 };
 
-export const createWeakStorage = <TKey extends object, TValue>(storage?: WeakMap<TKey, TValue>) => {
+export const createWeakStorage = <TKey extends object, TValue>(storage?: WeakMap<TKey, TValue>): IWeakStorage<TKey, TValue> => {
   return createDefaultStorage(storage || new WeakMap());
 };
 
-export const createStorage = <TKey, TValue>(storage?: Map<TKey, TValue>) => {
+export const createStorage = <TKey, TValue>(storage?: Map<TKey, TValue>): IStorage<TKey, TValue> => {
   const store = storage || new Map();
   const clear = cleanMaker(store);
   
