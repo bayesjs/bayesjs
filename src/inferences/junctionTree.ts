@@ -164,11 +164,12 @@ const normalize = (cliques: IClique[]) => {
 };
 
 const normalizePotentials = (potentials: ICliquePotentialItem[]) => {
-  const sum = potentials.reduce((acc, { then }) => acc + then, 0);
+  const thens = potentials.map(({ then }) => then);
+  const total = sum(thens) || 1;
   
   return potentials.map(({ when, then }) => ({
     when,
-    then: then / sum,
+    then: then / total,
   }));
 }
 
