@@ -1,30 +1,31 @@
 import { INetwork, ICombinations } from '../types/index';
 
-const makeCombinations = (network: INetwork, combinations: ICombinations[], nodes: string[], acc = {}) => {
-  if (nodes.length === 0) {
-    combinations.push(acc);
-    return;
-  }
-  
-  const [ nodeId, ...rest ] = nodes;
-  const states = network[nodeId].states;
+const makeCombinations = (network: INetwork, nodesToCombine: string[]) => {
+  const combinations = [];
 
-  for (const state of states) {
-    makeCombinations(network, combinations, rest, {
-      ...acc,
-      [nodeId]: state
-    });
+  const combine = (nodes: string[], acc = {}) => {
+    if (nodes.length === 0) {
+      combinations.push(acc);
+    } else {
+      const [ nodeId, ...rest ] = nodes;
+      const { states } = network[nodeId];
+
+      for (const state of states) {
+        combine(rest, {
+          ...acc,
+          [nodeId]: state
+        });
+      }
+    }
   }
+
+  combine(nodesToCombine);
+
+  return combinations;
 };
 
 export const buildCombinations = (network: INetwork, nodesToCombine?: string[]): ICombinations[] => {
-  const combinations: ICombinations[] = [];
+  const nodeIds = nodesToCombine ? nodesToCombine : Object.keys(network);
 
-  makeCombinations(
-    network,
-    combinations,
-    nodesToCombine ? nodesToCombine : Object.keys(network)
-  );
-
-  return combinations;
+  return makeCombinations(network, nodeIds);
 };
