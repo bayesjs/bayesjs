@@ -76,7 +76,7 @@ const filterCliquesByNodes = (cliques: IClique[], nodes?: ICombinations) => {
   const nodesToInfer = Object.keys(nodes);
 
   return cliques.filter(clique => 
-    clique.clique.some(nodeId => 
+    clique.nodeIds.some(nodeId => 
       nodesToInfer.some(nodeToInfer => 
         nodeId === nodeToInfer
       )
@@ -85,7 +85,7 @@ const filterCliquesByNodes = (cliques: IClique[], nodes?: ICombinations) => {
 };
 
 const getCliqueByLength = minOrMax => (cliques: IClique[]) => 
-  minOrMax(cliques, ({ clique }) => clique.length); 
+  minOrMax(cliques, ({ nodeIds }) => nodeIds.length); 
 
 const getMaximalCliqueLength = getCliqueByLength(maxBy);
 const getMinimalCliqueLength = getCliqueByLength(maxBy);
@@ -126,10 +126,6 @@ const getKeyGiven = given => {
   return "NO GIVEN";
 };
 
-export const clearCache = () => {
-  map.clear();
-}
-
 const createCliquesInfo = (network: INetwork) => {
   const moralGraph = buildMoralGraph(network);
   const triangulatedGraph = buildTriangulatedGraph(moralGraph);
@@ -143,15 +139,6 @@ const createCliquesInfo = (network: INetwork) => {
   };
 };
 
-const showCliques = (str: string, cliques: IClique[]) => {
-  // console.log(
-  //   str,
-  //   cliques.map(clique =>
-  //     sum(clique.potentials.map(p => p.then))
-  //   )
-  // )
-}
-
 const propagationCliques = (storage: IStorage<string, IClique[]>, cliques: IClique[], network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], given: ICombinations = {}) => {
   const key = getKeyGiven(given);
 
@@ -159,33 +146,37 @@ const propagationCliques = (storage: IStorage<string, IClique[]>, cliques: ICliq
     key,
     () => {
       initializePotentials(cliques, network, given);
-      showCliques('before', cliques);
       globalPropagation(network, junctionTree, cliques, sepSets);
-      showCliques('after', cliques);
       
-      return normalize(cliques);
+      return normalizeCliques(cliques);
     }
   );
 };
 
-const normalize = (cliques: IClique[]) => {
-  return cliques.map(({ id, potentials, clique }) => ({
+const normalizeCliques = (cliques: IClique[]): IClique[] => {
+  return cliques.map(({ id, potentials, nodeIds }) => ({
     id,
-    clique,
+    nodeIds,
     potentials: normalizePotentials(potentials)
   }));
 };
 
 const normalizePotentials = (potentials: ICliquePotentialItem[]) => {
-  const sum = potentials.reduce((acc, { then }) => acc + then, 0);
-  
-  return potentials.map(({ when, then }) => ({
-    when,
-    then: divide(then, sum),
-  }));
+  const thens = potentials.map(({ then }) => then);
+  const total = sum(thens);
+  const isZero = total === 0;
+
+  if (isZero) {
+    return potentials;
+  } else {
+    return potentials.map(({ when, then }) => ({
+      when,
+      then: divide(then, total),
+    }));
+  }
 }
 
-const getsepSet = (sepSets: ISepSet[], id: string, neighborId: string) => {
+const getSepSet = (sepSets: ISepSet[], id: string, neighborId: string) => {
   const temp = sepSets.find(x => {
     return (x.ca === neighborId && x.cb === id) || (x.ca === id && x.cb === neighborId);
   });
@@ -221,7 +212,6 @@ const createMessage = (combinations: ICombinations[], potentials: ICliquePotenti
     }
   }
 
-  // return normalizePotentials(message);
   return message;
 };
 
@@ -280,13 +270,12 @@ const globalPropagation = (network: INetwork, junctionTree: IGraph, cliques: ICl
 
     if (parentId !== null) {
       const clique = cliques.find(x => x.id === id);
-      const sepSet = getsepSet(sepSets, id, parentId).filter(x => nonParentNodes.indexOf(x) === -1);
+      const sepSet = getSepSet(sepSets, id, parentId).filter(x => nonParentNodes.indexOf(x) === -1);
       const potentials = clique.potentials;
       const combinations = buildCombinations(network, sepSet);
       const message = createMessage(combinations, potentials);
       const parent = cliques.find(x => x.id === parentId);
 
-      // parent.oldPotentials = clone(parent.potentials);
       parent.messagesReceived.set(clique.id, message);
       absorvMessage(parent, message);
     }
@@ -298,14 +287,13 @@ const globalPropagation = (network: INetwork, junctionTree: IGraph, cliques: ICl
     mark(id);
 
     const clique = cliques.find(x => x.id === id);
-    // const potentials = clique.oldPotentials;
     const { messagesReceived, potentials } = clique;
 
     const neighbors = junctionTree.getNeighborsOf(id)
       .filter(x => !isMarked(x));
     
     for (const neighborId of neighbors) {
-      const sepSet = getsepSet(sepSets, id, neighborId).filter(x => nonParentNodes.indexOf(x) === -1);
+      const sepSet = getSepSet(sepSets, id, neighborId).filter(x => nonParentNodes.indexOf(x) === -1);
       const messageReceived = messagesReceived.get(neighborId);
       const combinations = buildCombinations(network, sepSet);
       const message = createMessage(combinations, potentials, messageReceived);
@@ -330,9 +318,10 @@ const globalPropagation = (network: INetwork, junctionTree: IGraph, cliques: ICl
   }
 };
 
-const initializePotentials = (cliques: IClique[], network: INetwork, given: ICombinations) => {
+const getInitalValueMaker = (given: ICombinations) => {
   const givenKeys = Object.keys(given);
-  const getInitalValue = (comb: ICombinations) => {
+
+  return (comb: ICombinations) => {
     if (givenKeys.length) {
       const combKeys = Object.keys(comb);
       const inter = intersection(givenKeys, combKeys);
@@ -345,6 +334,10 @@ const initializePotentials = (cliques: IClique[], network: INetwork, given: ICom
     }
     return 1;
   }
+}
+
+const initializePotentials = (cliques: IClique[], network: INetwork, given: ICombinations) => {
+  const getInitalValue = getInitalValueMaker(given);
 
   for (const clique of cliques) {
     clique.factors = [];
@@ -357,7 +350,7 @@ const initializePotentials = (cliques: IClique[], network: INetwork, given: ICom
     const nodes = node.parents.concat(node.id);
 
     for (const clique of cliques) {
-      if (nodes.every(x => clique.clique.some(y => x === y))) {
+      if (nodes.every(x => clique.nodeIds.some(y => x === y))) {
         clique.factors.push(nodeId);
         //break?
       }
@@ -365,7 +358,7 @@ const initializePotentials = (cliques: IClique[], network: INetwork, given: ICom
   }
 
   for (const clique of cliques) {
-    const combinations = buildCombinations(network, clique.clique);
+    const combinations = buildCombinations(network, clique.nodeIds);
 
     for (const combination of combinations) {
       let value = getInitalValue(combination);
