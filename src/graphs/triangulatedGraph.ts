@@ -1,38 +1,31 @@
 import { IGraph } from '../types/index';
+import { minBy } from 'lodash';
+
+const findLessNeighborsMaker = (graph: IGraph, nodesToRemove: string[]) => () => {
+  if (nodesToRemove.length == 1) return nodesToRemove.shift();
+  
+  const nodeId = minBy(nodesToRemove, (node) => graph.getNeighborsOf(node).length)
+  const nodeIdIndex = nodesToRemove.indexOf(nodeId);
+
+  nodesToRemove.splice(nodeIdIndex, 1);
+  return nodeId;
+};
 
 export const buildTriangulatedGraph = (moralGraph: IGraph) => {
   const triangulatedGraph = moralGraph.clone();
   const clonedGraph = triangulatedGraph.clone();
-  const nodes = clonedGraph.getNodesId();
-  const nodesToRemove = [ ...nodes ];
-
-  const findLessNeighbors = () => {
-    if (nodesToRemove.length == 1) return nodesToRemove.shift();
-    let index = 0;
-    let candidateNeighbors = clonedGraph.getNeighborsOf(nodesToRemove[index]);
-
-    for (let i = 1; i < nodesToRemove.length; i++) {
-      const node = nodesToRemove[i];
-      const neighbors = clonedGraph.getNeighborsOf(node);
-
-      if (neighbors.length < candidateNeighbors.length) {
-        index = i;
-        candidateNeighbors = neighbors;
-      }
-    }
-
-    const node = nodesToRemove[index];
-    nodesToRemove.splice(index, 1);
-    return node;
-  };
+  const nodesToRemove = [ ...clonedGraph.getNodesId() ];
+  const findLessNeighbors = findLessNeighborsMaker(triangulatedGraph, nodesToRemove);
 
   while (nodesToRemove.length > 0) {
     const nodeToRemove = findLessNeighbors();
-    const neighbors = clonedGraph.getNeighborsOf(nodeToRemove).filter(id => nodesToRemove.indexOf(id) > -1);
+    const neighbors = clonedGraph.getNeighborsOf(nodeToRemove)
+      .filter(id => nodesToRemove.indexOf(id) > -1);
     
     for (let i = 0; i < neighbors.length; i++) {
-      for (let j = i + 1; j < neighbors.length; j++) {
-        const neighborA = neighbors[i];
+      const neighborA = neighbors[i];
+
+      for (let j = i + 1; j < neighbors.length; j++) {  
         const neighborB = neighbors[j];
 
         if (!clonedGraph.containsNodeId(neighborA) || !clonedGraph.containsNodeId(neighborB)) {
