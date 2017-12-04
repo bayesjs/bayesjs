@@ -18,9 +18,9 @@ export const buildCliqueGraph = (triangulatedGraph: IGraph): ICliqueGraph => {
 
       const sharedNodes = [];
 
-      for (let k = 0; k < cliques[j].clique.length; k++) {
-        if (cliques[i].clique.some(x => x === cliques[j].clique[k])) {
-          sharedNodes.push(cliques[j].clique[k]);
+      for (let k = 0; k < cliques[j].nodeIds.length; k++) {
+        if (cliques[i].nodeIds.some(x => x === cliques[j].nodeIds[k])) {
+          sharedNodes.push(cliques[j].nodeIds[k]);
         }
       }
 

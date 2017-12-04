@@ -5,7 +5,7 @@ import {
 
 export interface IClique {
   id: string,
-  clique: string[],
+  nodeIds: string[],
   potentials?: ICliquePotentialItem[],
   messagesReceived?: Map<string, ICliquePotentialItem[]>,
   factors?: string[]
