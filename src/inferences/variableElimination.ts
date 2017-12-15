@@ -1,39 +1,13 @@
-// @flow
+import { 
+  INetwork, 
+  ICombinations,
+  IFactor,
+  IFactorItem,
+  INode,
+  IInfer
+} from '../types/index';
 
-type CptWithoutParents = {
-  [key: string]: number
-};
-
-type CptWithParentsItem = {
-  when: { [key: string]: string },
-  then: { [key: string]: number }
-};
-
-type CptWithParents = CptWithParentsItem[];
-
-type Node = {
-  id: string,
-  states: string[],
-  parents: string[],
-  cpt: CptWithoutParents | CptWithParents
-};
-
-type Network = {
-  [key: string]: Node
-};
-
-type Combinations = {
-  [key: string]: string
-};
-
-type FactorItem = {
-  states: { [nodeId: string]: string },
-  value: number
-};
-
-type Factor = FactorItem[];
-
-export function infer(network: Network, nodes: Combinations, giving: ?Combinations): number {
+export const infer: IInfer = (network: INetwork, nodes: ICombinations, giving?: ICombinations): number => {
   const variables = Object.keys(network);
   const variablesToInfer = Object.keys(nodes);
   const variablesGiving = giving ? Object.keys(giving) : [];
@@ -83,9 +57,9 @@ export function infer(network: Network, nodes: Combinations, giving: ?Combinatio
   return inferenceRow.value;
 }
 
-function buildFactor(node: Node, giving: ?Combinations): Factor {
+function buildFactor(node: INode, giving?: ICombinations): IFactor {
   const factor = [];
-  const cpt = (node.cpt : any);
+  const cpt = (<any>node.cpt);
 
   if (node.parents.length === 0) {
     for (let i = 0; i < node.states.length; i++) {
@@ -127,7 +101,7 @@ function buildFactor(node: Node, giving: ?Combinations): Factor {
   return factor;
 }
 
-function joinFactors(f1: Factor, f2: Factor): Factor {
+function joinFactors(f1: IFactor, f2: IFactor): IFactor {
   const newFactor = [];
 
   for (let i = 0; i < f1.length; i++) {
@@ -173,7 +147,7 @@ function joinFactors(f1: Factor, f2: Factor): Factor {
   return newFactor;
 }
 
-function eliminateVariable(factor: Factor, variable: string): Factor {
+function eliminateVariable(factor: IFactor, variable: string): IFactor {
   const newFactor = [];
 
   for (let i = 0; i < factor.length; i++) {
@@ -200,7 +174,7 @@ function eliminateVariable(factor: Factor, variable: string): Factor {
   return newFactor;
 }
 
-function normalizeFactor(factor: Factor): Factor {
+function normalizeFactor(factor: IFactor): IFactor {
   const total = factor.reduce((acc, row) => acc + row.value, 0);
 
   if (total === 0) {

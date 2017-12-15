@@ -1,6 +1,6 @@
 {
   "name": "bayesjs",
-  "version": "0.3.3",
+  "version": "0.4.0-beta.4",
   "description": "Inference on Bayesian Networks",
   "main": "dist/bayes.js",
   "files": [
@@ -9,8 +9,10 @@
   "scripts": {
     "build": "webpack -p",
     "watch": "webpack -w",
-    "lint": "eslint . && flow",
-    "test": "mocha --compilers js:babel-core/register test/*js"
+    "lint": "eslint \"**/*.ts\"",
+    "test": "jest --config ./jest.config.js",
+    "test:watch": "jest --watch --config ./jest.config.js",
+    "test:coverage": "jest --coverage --config ./jest.config.js"
   },
   "repository": {
     "type": "git",
@@ -29,20 +31,24 @@
   },
   "homepage": "https://github.com/fhelwanger/bayesjs#readme",
   "dependencies": {
-    "deep-equal": "^1.0.1"
+    "deep-equal": "^1.0.1",
+    "ts-loader": "^3.1.1"
   },
   "devDependencies": {
-    "babel-core": "^6.14.0",
-    "babel-eslint": "^6.1.2",
-    "babel-loader": "^6.2.5",
-    "babel-plugin-transform-flow-strip-types": "^6.14.0",
-    "babel-plugin-transform-object-rest-spread": "^6.8.0",
-    "babel-preset-latest": "^6.14.0",
-    "eslint": "^2.13.1",
-    "eslint-config-fhelwanger": "^3.0.0",
-    "expect": "^1.14.0",
-    "flow-bin": "^0.42.0",
-    "mocha": "^2.4.5",
-    "webpack": "^1.13.2"
+    "@types/expect": "^1.20.2",
+    "@types/jest": "^21.1.8",
+    "@types/lodash": "^4.14.85",
+    "awesome-typescript-loader": "^3.4.0",
+    "deep-freeze": "0.0.1",
+    "eslint": "^4.12.1",
+    "expect": "^21.2.1",
+    "jest": "^21.2.1",
+    "lodash": "^4.17.4",
+    "object-hash": "^1.1.8",
+    "ts-jest": "^21.2.3",
+    "ts-node": "^3.3.0",
+    "typescript": "^2.6.1",
+    "typescript-eslint-parser": "^9.0.1",
+    "webpack": "^3.8.1"
   }
 }

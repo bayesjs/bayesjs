@@ -1,6 +1,7 @@
-import expect from 'expect';
+import * as expect from 'expect';
 import { addNode } from '../src/index';
 import { rain, sprinkler, grassWet } from '../models/rain-sprinkler-grasswet';
+import { INode } from '../src/types/index';
 
 describe('addNode', () => {
   it('adds node', () => {
@@ -40,7 +41,7 @@ describe('addNode', () => {
       addNode({}, {
         ...rain,
         id: 1
-      });
+      } as any);
     }).toThrow(/node id is required and must be a string/);
   });
 
@@ -56,14 +57,14 @@ describe('addNode', () => {
       addNode({}, {
         ...rain,
         parents: 1
-      });
+      } as any);
     }).toThrow(/node parents must be an array of strings/);
 
     expect(() => {
       addNode({}, {
         ...rain,
         parents: [ 1 ]
-      });
+      } as any);
     }).toThrow(/node parents must be an array of strings/);
   });
 
@@ -86,14 +87,14 @@ describe('addNode', () => {
       addNode({}, {
         ...rain,
         states: [ 1 ]
-      });
+      } as any);
     }).toThrow(/node states must be an array with two or more strings/);
 
     expect(() => {
       addNode({}, {
         ...rain,
         states: 1
-      });
+      } as any);
     }).toThrow(/node states must be an array with two or more strings/);
   });
 
@@ -131,7 +132,7 @@ describe('addNode', () => {
       addNode({}, {
         ...rain,
         cpt: { 'T': 1, 'F': 'F' }
-      });
+      } as any);
     }).toThrow(/You must set the probabilities/);
   });
 
