@@ -3,8 +3,8 @@ import { minBy } from 'lodash';
 
 const findLessNeighborsMaker = (graph: IGraph, nodesToRemove: string[]) => () => {
   if (nodesToRemove.length == 1) return nodesToRemove.shift();
-  
-  const nodeId = minBy(nodesToRemove, (node) => graph.getNeighborsOf(node).length)
+
+  const nodeId = minBy(nodesToRemove, node => graph.getNeighborsOf(node).length)
   const nodeIdIndex = nodesToRemove.indexOf(nodeId);
 
   nodesToRemove.splice(nodeIdIndex, 1);
@@ -21,11 +21,11 @@ export const buildTriangulatedGraph = (moralGraph: IGraph) => {
     const nodeToRemove = findLessNeighbors();
     const neighbors = clonedGraph.getNeighborsOf(nodeToRemove)
       .filter(id => nodesToRemove.indexOf(id) > -1);
-    
+
     for (let i = 0; i < neighbors.length; i++) {
       const neighborA = neighbors[i];
 
-      for (let j = i + 1; j < neighbors.length; j++) {  
+      for (let j = i + 1; j < neighbors.length; j++) {
         const neighborB = neighbors[j];
 
         if (!clonedGraph.containsNodeId(neighborA) || !clonedGraph.containsNodeId(neighborB)) {
@@ -38,7 +38,7 @@ export const buildTriangulatedGraph = (moralGraph: IGraph) => {
         }
       }
     }
-    
+
     clonedGraph.removeNodeId(nodeToRemove);
   }
 
