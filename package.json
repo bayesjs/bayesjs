@@ -7,7 +7,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "webpack -p",
+    "build": "webpack --mode production",
     "watch": "webpack -w",
     "lint": "eslint \"**/*.ts\"",
     "test": "jest --config ./jest.config.js",
@@ -32,13 +32,13 @@
   "homepage": "https://github.com/bayesjs/bayesjs#readme",
   "dependencies": {
     "deep-equal": "^1.0.1",
-    "ts-loader": "^3.1.1"
+    "ts-loader": "^6.0.2"
   },
   "devDependencies": {
     "@types/expect": "^1.20.2",
     "@types/jest": "^21.1.8",
     "@types/lodash": "^4.14.85",
-    "awesome-typescript-loader": "^3.4.0",
+    "awesome-typescript-loader": "^5.2.1",
     "deep-freeze": "0.0.1",
     "eslint": "^4.12.1",
     "expect": "^21.2.1",
@@ -46,9 +46,10 @@
     "lodash": "^4.17.4",
     "object-hash": "^1.1.8",
     "ts-jest": "^21.2.3",
-    "ts-node": "^3.3.0",
-    "typescript": "^2.6.1",
-    "typescript-eslint-parser": "^9.0.1",
-    "webpack": "^3.8.1"
+    "ts-node": "^8.2.0",
+    "typescript": "^3.5.1",
+    "typescript-eslint-parser": "^22.0.0",
+    "webpack": "^4.32.2",
+    "webpack-cli": "^3.3.2"
   }
 }
