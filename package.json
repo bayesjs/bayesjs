@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fhelwanger/bayesjs.git"
+    "url": "git+https://github.com/bayesjs/bayesjs.git"
   },
   "keywords": [
     "bayes",
@@ -27,9 +27,9 @@
   "author": "fhelwanger",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/fhelwanger/bayesjs/issues"
+    "url": "https://github.com/bayesjs/bayesjs/issues"
   },
-  "homepage": "https://github.com/fhelwanger/bayesjs#readme",
+  "homepage": "https://github.com/bayesjs/bayesjs#readme",
   "dependencies": {
     "deep-equal": "^1.0.1",
     "ts-loader": "^3.1.1"
