@@ -7,5 +7,5 @@ cache:
     - node_modules
 script:
   - yarn run lint
-  - yarn run test
+  - yarn run coveralls
   - yarn run build
