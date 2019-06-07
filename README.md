@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/bayesjs/bayesjs.svg?branch=master)](https://travis-ci.org/bayesjs/bayesjs)
+[![Coverage Status](https://coveralls.io/repos/github/nolleto/bayesjs/badge.svg)](https://coveralls.io/github/nolleto/bayesjs)
+
 # BayesJS
 
 A inference library for [Bayesian Networks](https://en.wikipedia.org/wiki/Bayesian_network) made with [TypeScript](https://www.typescriptlang.org/).

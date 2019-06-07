@@ -12,7 +12,8 @@
     "lint": "eslint \"**/*.ts\"",
     "test": "jest --config ./jest.config.js",
     "test:watch": "jest --watch --config ./jest.config.js",
-    "test:coverage": "jest --coverage --config ./jest.config.js"
+    "test:coverage": "jest --coverage --config ./jest.config.js",
+    "coveralls": "yarn test:coverage && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,7 @@
     "@types/lodash": "^4.14.133",
     "@typescript-eslint/parser": "^1.9.0",
     "awesome-typescript-loader": "^5.2.1",
+    "coveralls": "^3.0.4",
     "deep-freeze": "0.0.1",
     "eslint": "^5.16.0",
     "expect": "^24.8.0",
