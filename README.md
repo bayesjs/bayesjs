@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/bayesjs/bayesjs.svg?branch=master)](https://travis-ci.org/bayesjs/bayesjs)
 [![Coverage Status](https://coveralls.io/repos/github/bayesjs/bayesjs/badge.svg)](https://coveralls.io/github/bayesjs/bayesjs)
+![npm bundle size](https://img.shields.io/bundlephobia/min/bayesjs)
 
 # BayesJS
 
