@@ -1,4 +1,3 @@
-import { IFactorItem } from "./index";
+import { IFactorItem } from '.'
 
-export interface IFactor extends Array<IFactorItem> {
-}
+export type IFactor = Array<IFactorItem>

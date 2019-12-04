@@ -1,3 +1,1 @@
-export interface IEdge extends Array<string | string> {
-  
-}
+export type IEdge = Array<string | string>

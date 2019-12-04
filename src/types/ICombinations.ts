@@ -1,3 +1,3 @@
 export interface ICombinations {
-  [key: string]: string
+  [key: string]: string;
 }

@@ -1,21 +1,19 @@
 export const flager = () => {
-  let marked = [];
+  let marked: string[] = []
 
   const unmark = (id: string) => {
-    marked = marked.filter(x => x !== id);
-  };
+    marked = marked.filter(x => x !== id)
+  }
 
   const unmarkAll = () => {
-    marked = [];
-  };
+    marked = []
+  }
 
-  const isMarked = (id: string) => {
-    return marked.some(x => x === id);
-  };
+  const isMarked = (id: string) => marked.some(x => x === id)
 
   const mark = (id: string) => {
-    marked.push(id);
-  };
+    marked.push(id)
+  }
 
   return {
     mark,

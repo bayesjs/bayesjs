@@ -1,4 +1,3 @@
-import { INode } from "./index";
+import { INode } from '.'
 
-export interface INodeList extends Array<INode> {
-}
+export type INodeList = Array<INode>

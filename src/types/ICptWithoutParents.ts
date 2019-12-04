@@ -1,3 +1,3 @@
 export interface ICptWithoutParents {
-  [key: string]: number
+  [key: string]: number;
 }

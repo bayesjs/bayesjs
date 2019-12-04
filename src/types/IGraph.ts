@@ -1,15 +1,15 @@
-import { IEdge } from './index';
+import { IEdge } from '.'
 
 export interface IGraph {
-  addNodeId(nodeId: string),
-  removeNodeId(nodeId: string),
-  getNodesId(): string[],
-  getEdges(): IEdge[],
-  containsNodeId(nodeId: string): boolean,
-  addEdge(nodeA: string, nodeB: string),
-  removeEdge(nodeA: string, nodeB: string),
-  areConnected(nodeA: string, nodeB: string): boolean,
-  getNeighborsOf(nodeId: string): string[],
-  clone(): IGraph,
-  print()
+  addNodeId(nodeId: string): void;
+  removeNodeId(nodeId: string): void;
+  getNodesId(): string[];
+  getEdges(): IEdge[];
+  containsNodeId(nodeId: string): boolean;
+  addEdge(nodeA: string, nodeB: string): void;
+  removeEdge(nodeA: string, nodeB: string): void;
+  areConnected(nodeA: string, nodeB: string): boolean;
+  getNeighborsOf(nodeId: string): string[];
+  clone(): IGraph;
+  print(): void;
 }
