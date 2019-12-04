@@ -34,6 +34,17 @@
   "dependencies": {
     "ts-loader": "^6.0.2"
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "prepare-commit-msg": "exec < /dev/tty && git cz --hook || true"
+    }
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
   "devDependencies": {
     "@types/expect": "24.3.0",
     "@types/jest": "^24.0.13",
@@ -42,7 +53,9 @@
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
     "awesome-typescript-loader": "^5.2.1",
+    "commitizen": "^4.0.3",
     "coveralls": "^3.0.4",
+    "cz-conventional-changelog": "^3.0.2",
     "deep-freeze": "0.0.1",
     "eslint": "^6.7.2",
     "eslint-config-standard": "^14.1.0",
@@ -51,7 +64,9 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
     "expect": "^24.8.0",
+    "husky": "^3.1.0",
     "jest": "^24.8.0",
+    "lint-staged": "^10.0.0-beta.6",
     "lodash": "^4.17.11",
     "ts-jest": "^24.0.2",
     "ts-node": "^8.2.0",
