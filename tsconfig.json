@@ -1,19 +1,18 @@
 {
   "compilerOptions": {
+    "alwaysStrict": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
     "module": "commonjs",
-    "noImplicitAny": false,
-    "removeComments": true,
-    "preserveConstEnums": true,
-    "sourceMap": false,
-    "allowJs": true,
-    "target": "es5",
-    "lib": [ "es2015", "dom" ]
+    "declaration": true,
+    "sourceMap": true,
+    "target": "es6",
+    "lib": ["es5", "es6", "es7", "esnext.asynciterable"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": true,
+    "noImplicitAny": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
-  ]
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "**/*.spec.ts", "dist"]
 }

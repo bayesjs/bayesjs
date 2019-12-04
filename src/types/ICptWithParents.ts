@@ -1,4 +1,3 @@
-import { ICptWithParentsItem } from './index'
+import { ICptWithParentsItem } from '.'
 
-export interface ICptWithParents extends Array<ICptWithParentsItem> {
-}
+export type ICptWithParents = Array<ICptWithParentsItem>

@@ -1,4 +1,4 @@
 export interface ICptWithParentsItem {
-  when: { [key: string]: string },
-  then: { [key: string]: number }
+  when: { [key: string]: string };
+  then: { [key: string]: number };
 }

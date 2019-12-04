@@ -1,5 +1,5 @@
 export interface ISepSet {
-  ca: string,
-  cb: string,
-  sharedNodes: string[]
+  ca: string;
+  cb: string;
+  sharedNodes: string[];
 }

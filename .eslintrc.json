@@ -1,0 +1,23 @@
+{
+  "parserOptions": {
+    "project": "./tsconfig.json",
+    "tsconfigRootDir": "./"
+  },
+  "extends": ["plugin:@typescript-eslint/recommended", "standard"],
+  "plugins": ["@typescript-eslint"],
+  "env": {
+    "es6": true,
+    "node": true
+  },
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/interface-name-prefix": "off",
+    "no-unused-vars": "off", // @typescript-eslint/no-unused-vars is already on
+    "prefer-destructuring": "error",
+    "comma-dangle": [2, "always-multiline"],
+    "arrow-body-style": ["error", "as-needed"]
+  },
+  "parser": "@typescript-eslint/parser"
+}
