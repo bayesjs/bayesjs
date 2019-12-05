@@ -6,6 +6,10 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">= 10",
+    "npm": ">= 6"
+  },
   "scripts": {
     "build": "webpack --mode production",
     "watch": "webpack -w",
