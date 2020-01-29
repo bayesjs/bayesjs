@@ -1,5 +1,5 @@
 import { IClique, IGraph } from '../types'
-import { intersection, isEmpty, union } from 'lodash'
+import { intersection, isEmpty, union } from 'ramda'
 
 const getPivotsMaker = (graph: IGraph) => (P: string[], X: string[]): string[] => union(P, X).reduce((selected, nodeId) => {
   const t = intersection(graph.getNeighborsOf(nodeId), P)

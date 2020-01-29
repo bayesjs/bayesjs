@@ -8,11 +8,11 @@ import {
 } from '../../types'
 import { buildCombinations, flager } from '../../utils'
 import {
-  cloneDeep,
+  clone,
   divide,
   multiply,
   sum,
-} from 'lodash'
+} from 'ramda'
 
 const getSepSet = (sepSets: ISepSet[], id: string, neighborId: string) => {
   const temp = sepSets.find(x => (x.ca === neighborId && x.cb === id) || (x.ca === id && x.cb === neighborId))
@@ -33,7 +33,7 @@ const createMessage = (combinations: ICombinations[], potentials: ICliquePotenti
 
     message.push({
       then,
-      when: cloneDeep(when),
+      when: clone(when),
     })
   }
 

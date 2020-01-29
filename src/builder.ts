@@ -1,6 +1,6 @@
 import { ICptWithoutParents, INetwork, INode } from './types'
 
-import { has } from 'lodash'
+import { has } from 'ramda'
 
 const checkIfParentsExist = (network: INetwork, parents: string[]) => {
   parents.forEach(parentId => {
@@ -8,7 +8,7 @@ const checkIfParentsExist = (network: INetwork, parents: string[]) => {
       throw new Error('The node parents must be an array of strings.')
     }
 
-    if (!has(network, parentId)) {
+    if (!has(parentId, network)) {
       throw new Error('This node parent was not found.')
     }
   })
@@ -78,7 +78,7 @@ const checkIfPropertiesAreValid = (network: INetwork, node: INode) => {
 export const addNode = (network: INetwork, node: INode): INetwork => {
   checkIfPropertiesAreValid(network, node)
 
-  if (has(network, node.id)) {
+  if (has(node.id, network)) {
     throw new Error('This node is already added.')
   }
 

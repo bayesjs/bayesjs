@@ -1,7 +1,7 @@
 import { ICombinations, ICptWithParents, ICptWithoutParents, IInfer, INetwork } from '../types'
 
 import { buildCombinations } from '../utils'
-import { isEqual } from 'lodash'
+import { equals } from 'ramda'
 
 const combinationsCache = new WeakMap()
 
@@ -49,7 +49,7 @@ const calculateProbabilities = (network: INetwork, combinations: ICombinations[]
 
         for (let k = 0; k < cpt.length; k++) {
           const cptRow = cpt[k]
-          if (isEqual(cptRow.when, when)) {
+          if (equals(cptRow.when, when)) {
             rowProduct *= cptRow.then[row[nodeId]]
             break
           }

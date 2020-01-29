@@ -6,10 +6,10 @@ import {
   INetwork,
 } from '../../types'
 import {
+  equals,
   intersection,
-  isEqual,
   multiply,
-} from 'lodash'
+} from 'ramda'
 
 import { buildCombinations } from '../../utils'
 
@@ -66,7 +66,7 @@ export const initializePotentials = (cliques: IClique[], network: INetwork, give
             const when = network[factorId].parents
               .reduce((acc, x) => ({ ...acc, [x]: combination[x] }), {})
 
-            const cptRow = (factor.cpt as ICptWithParents).find(x => isEqual(x.when, when))
+            const cptRow = (factor.cpt as ICptWithParents).find(x => equals(x.when, when))
 
             value = multiply(value, cptRow!.then[combination[factorId]])
           } else {
