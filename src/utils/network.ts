@@ -5,7 +5,7 @@ import {
 } from '../types'
 
 import { addNode } from '..'
-import { isNil } from 'lodash'
+import { isNil } from 'ramda'
 
 export const networkToNodeList = (network: INetwork): INodeList => {
   const nodeIds = Object.keys(network)

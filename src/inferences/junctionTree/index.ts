@@ -12,10 +12,13 @@ import {
 import { createStorage, createWeakStorage } from '../../utils'
 import {
   divide,
-  isUndefined,
+  head,
+  isNil,
   minBy,
+  reduce,
   sum,
-} from 'lodash'
+  tail,
+} from 'ramda'
 
 import { createCliques } from './create-cliques'
 import { globalPropagation } from './global-propagation'
@@ -32,7 +35,7 @@ const checkPotentialByNodes = (potential: ICliquePotentialItem, nodes: ICombinat
     const whenValue = when[whenNodeId]
     const nodeValue = nodes[whenNodeId]
 
-    return isUndefined(nodeValue) || whenValue === nodeValue
+    return isNil(nodeValue) || whenValue === nodeValue
   })
 }
 
@@ -52,8 +55,11 @@ const filterCliquesByNodes = (cliques: IClique[], nodes: ICombinations = {}) => 
   )
 }
 
-const getMinimalCliqueLength = (cliques: IClique[]) =>
-  minBy(cliques, ({ nodeIds }) => nodeIds.length)
+const getMinimalCliqueLength = (cliques: IClique[]) => {
+  const min = minBy<IClique>(({ nodeIds }) => nodeIds.length)
+
+  return reduce(min, head(cliques)!, tail(cliques))
+}
 
 const getResult = (cliques: IClique[], nodes: ICombinations = {}) => {
   const cliquesNode = filterCliquesByNodes(cliques, nodes)
