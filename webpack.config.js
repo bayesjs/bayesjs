@@ -8,6 +8,7 @@ module.exports = {
     filename: 'bayes.js',
     library: 'bayesjs',
     libraryTarget: 'umd',
+    globalObject: `typeof self !== 'undefined' ? self : this`,
   },
   resolve: {
     extensions: [ '.tsx', '.ts', '.js' ],
