@@ -9,7 +9,7 @@ import {
 } from '../../types'
 import { buildCliqueGraph } from '../../graphs/cliqueGraph'
 
-export const createCliques = (network: INetwork) => {
+export default (network: INetwork) => {
   const moralGraph = buildMoralGraph(network)
   const triangulatedGraph = buildTriangulatedGraph(moralGraph)
   const { cliqueGraph, cliques, sepSets } = buildCliqueGraph(triangulatedGraph)
