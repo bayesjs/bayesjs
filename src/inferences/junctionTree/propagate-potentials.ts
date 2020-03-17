@@ -151,7 +151,6 @@ const absorbMessage = (potentials: ICliquePotentialItem[], messagePotentials: IC
 }
 
 const bestCliqueRoot: (cliques: IClique[]) => IClique = head
-// const bestCliqueRoot = (cliques: IClique[]) => cliques[2]
 
 const getCollectEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
   const order: ICollectEvidenceOrder[] = []
