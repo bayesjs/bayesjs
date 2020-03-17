@@ -5,9 +5,9 @@ import {
 } from '../types'
 import {
   append,
+  complement,
   converge,
   filter,
-  isEmpty,
   isNil,
   map,
   pipe,
@@ -59,13 +59,13 @@ export const createNetwork = (...nodes: INode[]): INetwork => {
 export const getNodeParents: (node: INode) => string[] = prop('parents')
 export const getNodeId: (node: INode) => string = prop('id')
 
-export const hasNodeParents = pipe(getNodeParents, isNotEmpty)
+export const hasNodeParents: (node: INode) => boolean = pipe(getNodeParents, isNotEmpty)
 export const getNodeParentsAndId: (node: INode) => string[] = converge(append, [prop('id'), prop('parents')])
-export const containsNodeParents: (node: INode) => boolean = pipe(getNodeParents, isEmpty)
+export const hasNotNodeParents: (node: INode) => boolean = complement(hasNodeParents)
 export const getNodesFromNetwork: (network: INetwork) => INode[] = values
 
 export const getNodeIdsWithoutParents: (network: INetwork) => string[] = pipe(
   getNodesFromNetwork,
-  filter(containsNodeParents),
+  filter(hasNotNodeParents),
   map(getNodeId),
 )
