@@ -9,6 +9,7 @@ import {
   ISepSet,
 } from '../../types'
 import {
+  any,
   anyPass,
   append,
   assoc,
@@ -196,6 +197,12 @@ const getDistributeEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) =>
   return order
 }
 
+const hasCliquePotentialAlreadyBeenAbsorbed = (messagesReceived: Map<string, ICliquePotentialItem[]>, message: ICliquePotentialItem[]): boolean => {
+  const messagesArray = [...messagesReceived.values()]
+
+  return any(equals(message), messagesArray)
+}
+
 const collectCliquesEvidence = (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], messages: ICliquePotentialMessages, cliquesPotentials: ICliquePotentials) =>
   reduce(
     (acc, { id, parentId }) => {
@@ -204,6 +211,10 @@ const collectCliquesEvidence = (network: INetwork, junctionTree: IGraph, cliques
       const combinations = buildCombinations(network, sepSet)
       const message = createMessage(combinations, potentials)
       const messagesReceived = messages[parentId]
+
+      if (hasCliquePotentialAlreadyBeenAbsorbed(messagesReceived, message)) {
+        return acc
+      }
 
       messagesReceived.set(id, message)
       return assoc(parentId, absorbMessage(acc[parentId], message), acc)
