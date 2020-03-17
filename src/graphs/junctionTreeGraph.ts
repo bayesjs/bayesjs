@@ -1,7 +1,7 @@
 import { IClique, IGraph, ISepSet } from '../types'
 
 export const buildJunctionTree = (cliqueGraph: IGraph, cliques: IClique[], sepSets: ISepSet[]): IGraph => {
-  sepSets.sort((a, b) => b.sharedNodes.length - a.sharedNodes.length)
+  sepSets.sort((a, b) => a.sharedNodes.length - b.sharedNodes.length)
 
   const spanningTree: ISepSet[] = []
 
