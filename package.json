@@ -36,6 +36,8 @@
   },
   "homepage": "https://github.com/bayesjs/bayesjs#readme",
   "dependencies": {
+    "@types/timsort": "^0.3.0",
+    "timsort": "^0.3.0",
     "ts-loader": "^6.0.2"
   },
   "husky": {
@@ -52,8 +54,8 @@
   "devDependencies": {
     "@types/expect": "24.3.0",
     "@types/jest": "^24.0.13",
-    "@types/lodash": "^4.14.133",
     "@types/node": "^12.12.14",
+    "@types/ramda": "^0.26.40",
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
     "awesome-typescript-loader": "^5.2.1",
@@ -71,7 +73,7 @@
     "husky": "^3.1.0",
     "jest": "^24.8.0",
     "lint-staged": "^10.0.0-beta.6",
-    "lodash": "^4.17.11",
+    "ramda": "^0.26.1",
     "ts-jest": "^24.0.2",
     "ts-node": "^8.2.0",
     "typescript": "^3.5.1",

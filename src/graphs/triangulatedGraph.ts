@@ -1,10 +1,17 @@
+import { head, minBy, reduce, tail } from 'ramda'
+
 import { IGraph } from '../types'
-import { minBy } from 'lodash'
+
+const getNodeWithLessNeighbors = (graph: IGraph, nodes: string[]) => {
+  const min = minBy<string>(node => graph.getNeighborsOf(node).length)
+
+  return reduce(min, head(nodes)!, tail(nodes))
+}
 
 const findLessNeighborsMaker = (graph: IGraph, nodesToRemove: string[]) => (): string => {
   if (nodesToRemove.length === 1) return nodesToRemove.shift()!
 
-  const nodeId = minBy(nodesToRemove, node => graph.getNeighborsOf(node).length)!
+  const nodeId = getNodeWithLessNeighbors(graph, nodesToRemove)
   const nodeIdIndex = nodesToRemove.indexOf(nodeId)
 
   nodesToRemove.splice(nodeIdIndex, 1)

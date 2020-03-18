@@ -164,7 +164,7 @@ const infersGiveNode1True = (network: INetwork) => (infer: IInfer) => {
   expect(infer(network, { node35: 'F' }, given).toFixed(4)).toBe('0.0100')
   expect(infer(network, { node36: 'T' }, given).toFixed(4)).toBe('0.0000')
   expect(infer(network, { node36: 'F' }, given).toFixed(4)).toBe('1.0000')
-  expect(infer(network, { node37: 'T' }, given).toFixed(4)).toBe('0.9899')// xx
+  expect(infer(network, { node37: 'T' }, given).toFixed(4)).toBe('0.9899')
   expect(infer(network, { node37: 'F' }, given).toFixed(4)).toBe('0.0101')
   expect(infer(network, { node38: 'T' }, given).toFixed(4)).toBe('0.9899')
   expect(infer(network, { node38: 'F' }, given).toFixed(4)).toBe('0.0101')

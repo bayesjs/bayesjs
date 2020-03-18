@@ -3,9 +3,20 @@ import {
   INode,
   INodeList,
 } from '../types'
+import {
+  append,
+  complement,
+  converge,
+  filter,
+  isNil,
+  map,
+  pipe,
+  prop,
+  values,
+} from 'ramda'
 
 import { addNode } from '..'
-import { isNil } from 'lodash'
+import { isNotEmpty } from './fp'
 
 export const networkToNodeList = (network: INetwork): INodeList => {
   const nodeIds = Object.keys(network)
@@ -44,3 +55,17 @@ export const createNetwork = (...nodes: INode[]): INetwork => {
     return { ...addNode(net, node) }
   }, {})
 }
+
+export const getNodeParents: (node: INode) => string[] = prop('parents')
+export const getNodeId: (node: INode) => string = prop('id')
+
+export const hasNodeParents: (node: INode) => boolean = pipe(getNodeParents, isNotEmpty)
+export const getNodeParentsAndId: (node: INode) => string[] = converge(append, [prop('id'), prop('parents')])
+export const hasNotNodeParents: (node: INode) => boolean = complement(hasNodeParents)
+export const getNodesFromNetwork: (network: INetwork) => INode[] = values
+
+export const getNodeIdsWithoutParents: (network: INetwork) => string[] = pipe(
+  getNodesFromNetwork,
+  filter(hasNotNodeParents),
+  map(getNodeId),
+)

@@ -11,6 +11,8 @@ export const flager = () => {
 
   const isMarked = (id: string) => marked.some(x => x === id)
 
+  const isNotMarked = (id: string) => !isMarked(id)
+
   const mark = (id: string) => {
     marked.push(id)
   }
@@ -20,5 +22,6 @@ export const flager = () => {
     unmark,
     unmarkAll,
     isMarked,
+    isNotMarked,
   }
 }

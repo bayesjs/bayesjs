@@ -1,7 +1,10 @@
 import { IClique, IGraph, ISepSet } from '../types'
 
+// this can be removed when ">= 11" and use the NodeJS sort method
+import { sort } from 'timsort'
+
 export const buildJunctionTree = (cliqueGraph: IGraph, cliques: IClique[], sepSets: ISepSet[]): IGraph => {
-  sepSets.sort((a, b) => b.sharedNodes.length - a.sharedNodes.length)
+  sort(sepSets, (a, b) => a.sharedNodes.length - b.sharedNodes.length)
 
   const spanningTree: ISepSet[] = []
 
@@ -60,10 +63,11 @@ export const buildJunctionTree = (cliqueGraph: IGraph, cliques: IClique[], sepSe
   const junctionTree = cliqueGraph.clone()
 
   for (let i = sepSets.length - 1; i >= 0; i--) {
-    const shouldRemove = !spanningTree.some(x => x === sepSets[i])
+    const sepSet = sepSets[i]
+    const shouldRemove = !spanningTree.some(x => x === sepSet)
 
     if (shouldRemove) {
-      junctionTree.removeEdge(sepSets[i].ca, sepSets[i].cb)
+      junctionTree.removeEdge(sepSet.ca, sepSet.cb)
       sepSets.splice(i, 1)
     }
   }
