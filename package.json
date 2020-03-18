@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "webpack --mode production",
+    "commit": "git-cz",
     "watch": "webpack -w",
     "lint": "eslint \"**/*.ts\"",
     "test": "jest --config ./jest.config.js",
@@ -43,7 +44,7 @@
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged",
-      "prepare-commit-msg": "exec < /dev/tty && git cz --hook || true"
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
     }
   },
   "config": {
@@ -52,6 +53,9 @@
     }
   },
   "devDependencies": {
+    "@commitlint/cli": "^8.3.5",
+    "@commitlint/config-conventional": "^8.3.4",
+    "@commitlint/prompt": "^8.3.5",
     "@types/expect": "24.3.0",
     "@types/jest": "^24.0.13",
     "@types/node": "^12.12.14",
