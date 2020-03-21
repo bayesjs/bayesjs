@@ -5,6 +5,8 @@ import { getNodeStates, getNodesFromNetwork } from './network'
 import { infer } from '../inferences/junctionTree'
 import { propIsNotNil } from './fp'
 
+const defaultGiven = {}
+
 const inferNodeState = (network: INetwork, nodeId: string, nodeState: string, given: ICombinations) => {
   if (propIsNotNil(nodeId, given)) {
     return propEq(nodeId, nodeState, given) ? 1 : 0
@@ -24,7 +26,7 @@ const inferNode = (network: INetwork, node: INode, given: ICombinations) =>
     getNodeStates(node),
   )
 
-export const inferAll = (network: INetwork, given = {} as ICombinations): INetworkResult =>
+export const inferAll = (network: INetwork, given: ICombinations = defaultGiven): INetworkResult =>
   reduce(
     (acc, node) => assoc(node.id, inferNode(network, node, given), acc),
     {} as INetworkResult,

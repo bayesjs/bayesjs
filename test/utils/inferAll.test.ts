@@ -37,7 +37,7 @@ describe('InferAll Utils', () => {
       })
     })
 
-    describe('Burglary True', () => {
+    describe.only('Burglary True', () => {
       it('returns inference result for all node states', () => {
         expect(inferAll(network, { BURGLARY: 'T' })).toEqual({
           BURGLARY: {
