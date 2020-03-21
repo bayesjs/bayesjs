@@ -13,3 +13,4 @@ export const inferences = {
 export * from './builder'
 export const { infer } = junctionTree
 export * from './types'
+export * from './utils/inferAll'
