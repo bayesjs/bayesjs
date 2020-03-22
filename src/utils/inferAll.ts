@@ -1,9 +1,13 @@
-import { ICombinations, INetwork, INetworkResult, INode, INodeResult } from '../types'
-import { assoc, propEq, reduce } from 'ramda'
+import { ICombinations, IInferAllOptions, INetwork, INetworkResult, INode, INodeResult } from '../types'
+import { assoc, clone, identity, ifElse, nthArg, pipe, propEq, reduce } from 'ramda'
 import { getNodeStates, getNodesFromNetwork } from './network'
 
 import { infer } from '../inferences/junctionTree'
 import { propIsNotNil } from './fp'
+
+const defaultOptions: IInferAllOptions = {
+  force: false,
+}
 
 const inferNodeState = (network: INetwork, nodeId: string, nodeState: string, given: ICombinations) => {
   if (propIsNotNil(nodeId, given)) {
@@ -24,9 +28,19 @@ const inferNode = (network: INetwork, node: INode, given: ICombinations) =>
     getNodeStates(node),
   )
 
-export const inferAll = (network: INetwork, given: ICombinations = {}): INetworkResult =>
-  reduce(
-    (acc, node) => assoc(node.id, inferNode(network, node, given), acc),
+const cloneIfForce: <T>(network: T, options: IInferAllOptions) => T = ifElse(
+  pipe(nthArg(1), propEq('force', true)),
+  clone,
+  identity,
+)
+
+export const inferAll = (network: INetwork, given: ICombinations = {}, options: IInferAllOptions = defaultOptions): INetworkResult => {
+  const networkToInfer = cloneIfForce(network, options)
+  const givenToInfer = cloneIfForce(given, options)
+
+  return reduce(
+    (acc, node) => assoc(node.id, inferNode(networkToInfer, node, givenToInfer), acc),
     {} as INetworkResult,
     getNodesFromNetwork(network),
   )
+}

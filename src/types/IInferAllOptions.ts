@@ -1,6 +1,6 @@
 export interface IInferAllOptions {
   /**
-   * This prop
+   * Enforces to clear junction tree cache before inferring all network
    */
   force: boolean;
 }
