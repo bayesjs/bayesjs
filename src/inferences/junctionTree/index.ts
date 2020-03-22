@@ -26,7 +26,7 @@ const getResult = (cliques: IClique[], cliquesPotentials: ICliquePotentials, nod
   return sum(thens)
 }
 
-export const infer: IInfer = (network: INetwork, nodes: ICombinations, given?: ICombinations): number => {
+export const infer: IInfer = (network: INetwork, nodes: ICombinations, given: ICombinations = {}): number => {
   const { cliques, sepSets, junctionTree } = createCliques(network)
   const cliquesPotentials = getCliquesPotentials(cliques, network, junctionTree, sepSets, given)
 

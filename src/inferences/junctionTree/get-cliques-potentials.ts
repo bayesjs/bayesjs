@@ -12,8 +12,6 @@ import createInitialPotentials from './create-initial-potentials'
 import { isNil } from 'ramda'
 import propagatePotential from './propagate-potentials'
 
-const defaultGiven = {}
-
 const getCliquesPotentialsWeekMap = new WeakMap<IClique[], ICliquePotentials>()
 const getGivensWeekMap = new WeakMap<ICombinations, boolean>()
 
@@ -33,7 +31,7 @@ const setCachedValues = (cliques: IClique[], given: ICombinations, result: ICliq
   getGivensWeekMap.set(given, true)
 }
 
-export default (cliques: IClique[], network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], given: ICombinations = defaultGiven) => {
+export default (cliques: IClique[], network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], given: ICombinations) => {
   const cached = getCachedValues(cliques, given)
 
   if (isNil(cached)) {
