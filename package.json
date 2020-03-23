@@ -8,7 +8,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">= 10",
+    "node": ">= 10.18",
     "npm": ">= 6"
   },
   "scripts": {
