@@ -63,12 +63,36 @@ This function receives a network, the knowing states, and the options and will r
 
 ##### force
 
+default: `false`
+
 Enforces to clear junction tree cache before inferring all network.
 The junction tree uses [WeakMap](https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) to store the `cliques` and `potentials` that are used at the algorithm.
 - `cliques` weak stored by `network`
 - `potentials` weak stored by `cliques` and `given`
 
 This option is only necessary if you are mutation your `network` or `given` object instead of creating a new object before inferring each time.
+
+##### precision
+
+default: `8`
+
+Rounds the network results according to this value. To round the value we are using [round-to](https://www.npmjs.com/package/round-to).
+
+
+Some rounds examples:
+- `0.30000000000000004`
+  - 8 precision -> `0.3`
+  - 4 precision -> `0.3`
+  - 2 precision -> `0.3`
+- `0.3333333333333333`
+  - 8 precision -> `0.33333333`
+  - 4 precision -> `0.3333`
+  - 2 precision -> `0.33`
+- `0.9802979902088171`
+  - 8 precision -> `0.98029799`
+  - 4 precision -> `0.9803`
+  - 2 precision -> `0.98`
+
 
 ##### Example
 
