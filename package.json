@@ -39,7 +39,9 @@
   },
   "homepage": "https://github.com/bayesjs/bayesjs#readme",
   "dependencies": {
+    "@types/round-to": "^4.0.0",
     "@types/timsort": "^0.3.0",
+    "round-to": "^4.1.0",
     "timsort": "^0.3.0",
     "ts-loader": "^6.2.2"
   },
