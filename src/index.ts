@@ -9,6 +9,8 @@ export const inferences = {
   junctionTree,
   variableElimination,
 }
+export * from './types'
 
 export * from './builder'
+
 export const { infer } = junctionTree

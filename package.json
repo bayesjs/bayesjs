@@ -2,7 +2,8 @@
   "name": "bayesjs",
   "version": "0.4.3",
   "description": "Inference on Bayesian Networks",
-  "main": "dist/bayes.js",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "files": [
     "dist"
   ],
@@ -11,9 +12,9 @@
     "npm": ">= 6"
   },
   "scripts": {
-    "build": "webpack --mode production",
-    "commit": "git-cz",
-    "watch": "webpack -w",
+    "build": "tsc",
+    "git": "git-cz",
+    "watch": "tsc -w",
     "lint": "eslint \"**/*.ts\"",
     "test": "jest --config ./jest.config.js",
     "test:watch": "jest --watch --config ./jest.config.js",
@@ -61,6 +62,7 @@
     "@semantic-release/git": "^9.0.0",
     "@types/expect": "24.3.0",
     "@types/jest": "^24.0.13",
+    "@types/lodash": "^4.14.133",
     "@types/node": "^12.12.14",
     "@types/ramda": "^0.26.40",
     "@typescript-eslint/eslint-plugin": "^2.10.0",
@@ -80,12 +82,9 @@
     "husky": "^3.1.0",
     "jest": "^24.8.0",
     "lint-staged": "^10.0.0-beta.6",
-    "ramda": "^0.26.1",
-    "semantic-release": "^17.0.4",
+    "lodash": "^4.17.11",
     "ts-jest": "^24.0.2",
     "ts-node": "^8.2.0",
-    "typescript": "^3.5.1",
-    "webpack": "^4.32.2",
-    "webpack-cli": "^3.3.2"
+    "typescript": "^3.5.1"
   }
 }
