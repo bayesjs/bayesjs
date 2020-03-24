@@ -13,6 +13,6 @@
     "strict": true,
     "noImplicitAny": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["node_modules", "**/*.spec.ts", "dist"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "**/*.spec.ts", "dist", "test/**/*.ts"]
 }

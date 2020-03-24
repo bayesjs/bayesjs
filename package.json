@@ -3,6 +3,7 @@
   "version": "0.4.3",
   "description": "Inference on Bayesian Networks",
   "main": "dist/bayes.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -40,7 +41,7 @@
   "dependencies": {
     "@types/timsort": "^0.3.0",
     "timsort": "^0.3.0",
-    "ts-loader": "^6.0.2"
+    "ts-loader": "^6.2.2"
   },
   "husky": {
     "hooks": {
@@ -65,7 +66,6 @@
     "@types/ramda": "^0.26.40",
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
-    "awesome-typescript-loader": "^5.2.1",
     "commitizen": "^4.0.3",
     "coveralls": "^3.0.4",
     "cz-conventional-changelog": "^3.0.2",
