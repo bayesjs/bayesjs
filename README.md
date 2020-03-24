@@ -26,7 +26,7 @@ This function receives a network, a node's state, and the knowing states and wil
 
 As mentioned above, there are three inferences engines, by default the junction tree algorithm is used to execute the infer function.
 
-It's important to remember that junction tree use WeakMap to cache some internal results so, if you are mutating the `network` or `given` object is advisable to shallow clone both objects before infer.
+It's important to remember that junction tree uses WeakMap to cache some internal results, if you are mutating the `network` or `given` object is advisable to shallow clone both objects before infer.
 Read more about JT cache [here](#force)
 
 ```js
