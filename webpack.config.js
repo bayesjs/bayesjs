@@ -1,5 +1,4 @@
 const path = require('path');
-const { CheckerPlugin } = require('awesome-typescript-loader')
 
 module.exports = {
   entry: path.join(__dirname, 'src/index'),
@@ -11,17 +10,22 @@ module.exports = {
     globalObject: `typeof self !== 'undefined' ? self : this`,
   },
   resolve: {
-    extensions: [ '.tsx', '.ts', '.js' ],
+    extensions: ['.tsx', '.ts', '.js'],
   },
   module: {
     rules: [
       {
         test: /\.tsx?$/,
-        use: 'awesome-typescript-loader',
+        use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              onlyCompileBundledFiles: true
+            }
+          }
+        ],
+        exclude: /node_modules/,
       },
     ],
   },
-  plugins: [
-    new CheckerPlugin(),
-  ],
 };
