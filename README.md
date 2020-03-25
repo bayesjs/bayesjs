@@ -55,9 +55,10 @@ infer(network, { 'RAIN': 'T' }, { 'SPRINKLER': 'F' }).toFixed(4) // 0.2920
 ```
 
 #### inferAll(network: [INetwork](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetwork.ts), given?: [ICombinations](https://github.com/fhelwanger/bayesjs/blob/master/src/types/ICombinations.ts), options?: [IInferAllOptions](https://github.com/fhelwanger/bayesjs/blob/master/src/types/IInferAllOptions.ts)): [INetworkResult](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetworkResult.ts))
-Calculate all probabilities from a network and return an object with all results.
+Calculate all probabilities from a network by receiving the network, knowing states, and options.
+It returns an object with all results.
 
-This function receives a network, the knowing states, and the options and will return an object with all results. This method will execute the junction tree algorithm on each node's state.
+This method will execute the junction tree algorithm on each node's state.
 
 ##### Options
 
