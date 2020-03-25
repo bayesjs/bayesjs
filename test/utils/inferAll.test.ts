@@ -14,7 +14,7 @@ describe('InferAll Utils', () => {
     const networkCloned = clone(network)
     const given = { EARTHQUAKE: 'T' }
 
-    it('returns inference result for all node states', () => {
+    it("returns inference result for all node's state", () => {
       inferAll(networkCloned, given) // infer to cache
 
       // change network by mutation
@@ -52,7 +52,7 @@ describe('InferAll Utils', () => {
     describe('to 4', () => {
       describe('With alarm network', () => {
         describe('No evidences', () => {
-          it('returns inference result for all node states', () => {
+          it("returns inference result for all node's state", () => {
             expect(inferAll(network, {}, { precision: 4 })).toEqual({
               BURGLARY: { T: 0.001, F: 0.999 },
               EARTHQUAKE: { T: 0.002, F: 0.998 },
@@ -68,7 +68,7 @@ describe('InferAll Utils', () => {
     describe('to 2', () => {
       describe('With alarm network', () => {
         describe('No evidences', () => {
-          it('returns inference result for all node states', () => {
+          it("returns inference result for all node's state", () => {
             expect(inferAll(network, {}, { precision: 2 })).toEqual({
               BURGLARY: { T: 0, F: 1 },
               EARTHQUAKE: { T: 0, F: 1 },
@@ -85,7 +85,7 @@ describe('InferAll Utils', () => {
   describe('When no options is passed', () => {
     describe('With alarm network', () => {
       describe('No evidences', () => {
-        it('returns inference result for all node states', () => {
+        it("returns inference result for all node's state", () => {
           expect(inferAll(network)).toEqual({
             BURGLARY: { T: 0.001, F: 0.999 },
             EARTHQUAKE: { T: 0.002, F: 0.998 },
@@ -97,7 +97,7 @@ describe('InferAll Utils', () => {
       })
 
       describe('Burglary True', () => {
-        it('returns inference result for all node states', () => {
+        it("returns inference result for all node's state", () => {
           expect(inferAll(network, { BURGLARY: 'T' })).toEqual({
             BURGLARY: { T: 1, F: 0 },
             EARTHQUAKE: { T: 0.002, F: 0.998 },
@@ -109,7 +109,7 @@ describe('InferAll Utils', () => {
       })
 
       describe('Burglary True and Earthquake True', () => {
-        it('returns inference result for all node states', () => {
+        it("returns inference result for all node's state", () => {
           expect(inferAll(network, { BURGLARY: 'T', EARTHQUAKE: 'T' })).toEqual({
             BURGLARY: { T: 1, F: 0 },
             EARTHQUAKE: { T: 1, F: 0 },
@@ -123,7 +123,7 @@ describe('InferAll Utils', () => {
 
     describe('With huge network', () => {
       describe('No evidences', () => {
-        it('returns inference result for all node states', () => {
+        it("returns inference result for all node's state", () => {
           expect(inferAll(hugeNetwork)).toEqual({
             node1: { T: 0.98019999, F: 0.01980001 },
             node2: { T: 0.99, F: 0.01 },
