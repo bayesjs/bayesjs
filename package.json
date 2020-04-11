@@ -69,6 +69,7 @@
     "@typescript-eslint/eslint-plugin": "^2.10.0",
     "@typescript-eslint/parser": "^2.10.0",
     "commitizen": "^4.0.3",
+    "conventional-changelog-conventionalcommits": "^4.2.3",
     "coveralls": "^3.0.4",
     "cz-conventional-changelog": "^3.0.2",
     "deep-freeze": "0.0.1",
