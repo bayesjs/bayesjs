@@ -1,152 +1,53 @@
 import * as expect from 'expect'
-
-import { grassWet, rain, sprinkler } from '../models/rain-sprinkler-grasswet'
+import * as nodeValidations from '../src/validations/node'
 
 import { INetwork } from '../src/types'
 import { addNode } from '../src'
 
-describe('addNode', () => {
-  it('adds node', () => {
-    const network = addNode({}, rain)
+describe('Builder', () => {
+  describe('addNode', () => {
+    const node = {
+      id: 'node-id',
+      states: ['T', 'F'],
+      parents: [],
+      cpt: { T: 0.2, F: 0.8 },
+    }
+    const network = {}
 
-    expect(network[rain.id]).toBe(rain)
-  })
+    describe('when node is already in network', () => {
+      it('throws an error that node is already in network', () => {
+        const newNetwork = addNode(network, node)
 
-  it('adds nodes with parents', () => {
-    let network: INetwork = {}
-
-    network = addNode(network, rain)
-    network = addNode(network, sprinkler)
-    network = addNode(network, grassWet)
-
-    expect(network[rain.id]).toBe(rain)
-    expect(network[sprinkler.id]).toBe(sprinkler)
-    expect(network[grassWet.id]).toBe(grassWet)
-  })
-
-  it('throws when adding node with invalid id', () => {
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        id: undefined,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node id is required and must be a string/)
-
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        id: '',
+        expect(() => {
+          // @ts-ignore
+          addNode(newNetwork, node)
+        }).toThrow('[Node "node-id"]: This node is already added in the network.')
       })
-    }).toThrow(/node id is required and must be a string/)
+    })
 
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        id: 1,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node id is required and must be a string/)
-  })
+    describe('when node is not in network', () => {
+      let validNode: jest.SpyInstance
+      let newNetwork: INetwork
 
-  it('throws when adding node with invalid parents', () => {
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        parents: undefined,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node parents must be an array of strings/)
-
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        parents: 1,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node parents must be an array of strings/)
-
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        parents: [1],
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node parents must be an array of strings/)
-  })
-
-  it('throws when adding node with invalid states', () => {
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        states: undefined,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node states must be an array with two or more strings/)
-
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        states: [],
+      beforeEach(() => {
+        validNode = jest.spyOn(nodeValidations, 'default')
+        newNetwork = addNode(network, node)
       })
-    }).toThrow(/node states must be an array with two or more strings/)
 
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        states: [1],
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node states must be an array with two or more strings/)
-
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        states: 1,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/node states must be an array with two or more strings/)
-  })
-
-  it('throws when adding node twice', () => {
-    expect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      let network = {}
-
-      network = addNode(network, rain)
-      network = addNode(network, rain)
-    }).toThrow(/node is already added/)
-  })
-
-  it('throws when adding node with non existent parent', () => {
-    expect(() => {
-      addNode({}, sprinkler)
-    }).toThrow(/node parent was not found/)
-  })
-
-  it('throws when node has no parents and cpt is not valid', () => {
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        cpt: undefined,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/You must set the probabilities/)
-
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        cpt: { T: 1 },
+      it('calls node validations', () => {
+        expect(validNode).toHaveBeenCalledWith(node, network)
       })
-    }).toThrow(/You must set the probabilities/)
 
-    expect(() => {
-      addNode({}, {
-        ...rain,
-        cpt: { T: 1, F: 'F' },
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/You must set the probabilities/)
-  })
-
-  it('throws when node has parents and cpt is not valid', () => {
-    const network = addNode({}, rain)
-
-    expect(() => {
-      addNode(network, {
-        ...sprinkler,
-        cpt: undefined,
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-    }).toThrow(/You must set the probabilities/)
+      it('returns network with node', () => {
+        expect(newNetwork).toEqual({
+          'node-id': {
+            id: 'node-id',
+            states: ['T', 'F'],
+            parents: [],
+            cpt: { T: 0.2, F: 0.8 },
+          },
+        })
+      })
+    })
   })
 })
