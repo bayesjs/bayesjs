@@ -1,61 +1,11 @@
-import { ICptWithoutParents, INetwork, INode } from './types'
+import { INetwork, INode } from './types'
+import { assoc, has } from 'ramda'
 
-import { has } from 'ramda'
+import validNode from './validations/node'
 
-const checkIfParentsExist = (network: INetwork, parents: string[]) => {
-  parents.forEach(parentId => {
-    if (typeof parentId !== 'string') {
-      throw new Error('The node parents must be an array of strings.')
-    }
-
-    if (!has(parentId, network)) {
-      throw new Error('This node parent was not found.')
-    }
-  })
-}
-
-const checkIfAllProbabilitiesArePresent = (states: string[], probabilities: ICptWithoutParents) => {
-  states.forEach(state => {
-    if (!probabilities || typeof probabilities[state] !== 'number') {
-      throw new Error('You must set the probabilities of all states of this node.')
-    }
-  })
-}
-
-const checkIfPropertiesAreValid = (network: INetwork, node: INode) => {
-  if (!node.id || typeof node.id !== 'string') {
-    throw new Error('The node id is required and must be a string.')
-  }
-
-  if (!Array.isArray(node.parents)) {
-    throw new Error('The node parents must be an array of strings.')
-  }
-
-  checkIfParentsExist(network, node.parents)
-
-  if (!Array.isArray(node.states) || node.states.length === 0) {
-    throw new Error('The node states must be an array with two or more strings.')
-  }
-
-  node.states.forEach(state => {
-    if (typeof state !== 'string') {
-      throw new Error('The node states must be an array with two or more strings.')
-    }
-  })
-
-  if (node.parents.length === 0) {
-    checkIfAllProbabilitiesArePresent(node.states, (node.cpt as ICptWithoutParents))
-  } else {
-    // TODO: validate if all combinations are present and improve the
-    // 'throws when node has parents and cpt is not valid' test.
-
-    if (!Array.isArray(node.cpt)) {
-      throw new Error('You must set the probabilities of all states of this node giving the combinations of its parents states.')
-    }
-
-    node.cpt.forEach(probs => {
-      checkIfAllProbabilitiesArePresent(node.states, probs.then)
-    })
+const validIfNodeIsAlreadyInNetwork = (node: INode, network: INetwork) => {
+  if (has(node.id, network)) {
+    throw new Error(`[Node "${node.id}"]: This node is already added to the network.`)
   }
 }
 
@@ -76,14 +26,8 @@ const checkIfPropertiesAreValid = (network: INetwork, node: INode) => {
  * @returns {Object} Bayesian Network with node added
  */
 export const addNode = (network: INetwork, node: INode): INetwork => {
-  checkIfPropertiesAreValid(network, node)
+  validIfNodeIsAlreadyInNetwork(node, network)
+  validNode(node, network)
 
-  if (has(node.id, network)) {
-    throw new Error('This node is already added.')
-  }
-
-  return {
-    ...network,
-    [node.id]: node,
-  }
+  return assoc(node.id, node, network)
 }
