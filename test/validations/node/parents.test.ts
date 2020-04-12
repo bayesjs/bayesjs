@@ -29,7 +29,8 @@ Node: {"id": "node-id"}`)
         validNodeParents(node, network)
       }).toThrow(`[Node "node-id"]: The node parents must be an array of strings.
 
-Current parents: "parents"`)
+Node parents type: String
+Node parents: "parents"`)
     })
   })
 
@@ -55,8 +56,9 @@ Current parents: "parents"`)
             validNodeParents(node, network)
           }).toThrow(`[Node "node-id"]: All node parents must be strings.
 
-Current parents: ["node1", false]
-Wrong parent: false`)
+Node parent type: Boolean
+Node parent: false
+Node parents: ["node1", false]`)
         })
       })
 

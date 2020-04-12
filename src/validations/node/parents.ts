@@ -1,5 +1,5 @@
 import { INetwork, INode } from '../../types'
-import { forEach, has, isNil, toString } from 'ramda'
+import { forEach, has, isNil, toString, type } from 'ramda'
 
 import { isNotString } from '../../utils'
 
@@ -8,8 +8,9 @@ const checkIfParentsExist = ({ id, parents }: INode, network: INetwork) => {
     if (isNotString(parentId)) {
       throw new Error(`[Node "${id}"]: All node parents must be strings.
 
-Current parents: ${toString(parents)}
-Wrong parent: ${toString(parentId)}`)
+Node parent type: ${type(parentId)}
+Node parent: ${toString(parentId)}
+Node parents: ${toString(parents)}`)
     }
 
     if (!has(parentId, network)) {
@@ -28,7 +29,8 @@ Node: ${toString(node)}`)
   if (!Array.isArray(node.parents)) {
     throw new Error(`[Node "${node.id}"]: The node parents must be an array of strings.
 
-Current parents: ${toString(node.parents)}`)
+Node parents type: ${type(node.parents)}
+Node parents: ${toString(node.parents)}`)
   }
 
   checkIfParentsExist(node, network)

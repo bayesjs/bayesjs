@@ -21,7 +21,7 @@ describe('Builder', () => {
         expect(() => {
           // @ts-ignore
           addNode(newNetwork, node)
-        }).toThrow('[Node "node-id"]: This node is already added in the network.')
+        }).toThrow('[Node "node-id"]: This node is already added to the network.')
       })
     })
 

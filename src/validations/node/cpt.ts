@@ -1,6 +1,6 @@
 import { ICombinations, ICptWithParents, ICptWithoutParents, INetwork, INode } from '../../types'
 import { buildCombinations, isNotNumber, isNotObject } from '../../utils'
-import { equals, forEach, isNil, none, pluck, toString } from 'ramda'
+import { equals, forEach, isNil, none, pluck, toString, type } from 'ramda'
 
 const mapThen = pluck('when')
 
@@ -9,14 +9,15 @@ const checkIfAllProbabilitiesArePresent = (id: string, states: string[], probabi
     if (isNil(probabilities[state])) {
       throw new Error(`[Node "${id}"]: Missing probability for "${state}" state.
 
-Current cpt: ${toString(probabilities)}`)
+Node cpt: ${toString(probabilities)}`)
     }
 
     if (isNotNumber(probabilities[state])) {
       throw new Error(`[Node "${id}"]: All probabilities must be a number.
 
-Probability value for "${state}": ${toString(probabilities[state])}
-Current cpt: ${toString(probabilities)}`)
+Node cpt type for "${state}": ${type(probabilities[state])}
+Node cpt for "${state}": ${toString(probabilities[state])}
+Node cpt: ${toString(probabilities)}`)
     }
   }, states)
 }
@@ -29,9 +30,9 @@ const checkInvalidCombinations = (nodeId: string, nodeCombinations: ICombination
       if (notExist) {
         console.warn(`[Node "${nodeId}"]: The node cpt has one extra/invalid combination.
 
-Invalid combination: ${toString(nodeCombination)}
-All node combinations: ${toString(nodeCombinations)}
-All combinations needed: ${toString(validCombinations)}`)
+Invalid node cpt combination (when): ${toString(nodeCombination)}
+Node cpt combinations (when's): ${toString(nodeCombinations)}
+Combinations needed: ${toString(validCombinations)}`)
       }
     },
     nodeCombinations,
@@ -45,9 +46,9 @@ const checkMissingCombinations = (nodeId: string, nodeCombinations: ICombination
       if (notExist) {
         throw new Error(`[Node "${nodeId}"]: The node cpt has one missing combination.
 
-Missing combination: ${toString(combination)}
-All node combinations: ${toString(nodeCombinations)}
-All combinations needed: ${toString(validCombinations)}`)
+Missing node cpt combination (when): ${toString(combination)}
+Node cpt combinations (when's): ${toString(nodeCombinations)}
+Combinations needed: ${toString(validCombinations)}`)
       }
     },
     validCombinations,
@@ -71,7 +72,8 @@ Node: ${toString(node)}`)
   if (isNotObject(node.cpt)) {
     throw new Error(`[Node "${node.id}"]: The node cpt must be an object or an array.
 
-Current cpt: ${toString(node.cpt)}`)
+Node cpt type: ${type(node.cpt)}
+Node cpt: ${toString(node.cpt)}`)
   }
 
   if (Array.isArray(node.cpt)) {

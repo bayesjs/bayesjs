@@ -30,11 +30,12 @@ Node: {"id": "node-id"}`)
         validNodeCpt(node, network)
       }).toThrow(`[Node "node-id"]: The node cpt must be an object or an array.
 
-Current cpt: "cpt"`)
+Node cpt type: String
+Node cpt: "cpt"`)
     })
   })
 
-  describe('When node "cpt" an object', () => {
+  describe('When node "cpt" is an object', () => {
     describe('and has a missing probability', () => {
       const node = {
         id: 'node-id',
@@ -48,7 +49,7 @@ Current cpt: "cpt"`)
           validNodeCpt(node, network)
         }).toThrow(`[Node "node-id"]: Missing probability for "False" state.
 
-Current cpt: {"True": 0.5}`)
+Node cpt: {"True": 0.5}`)
       })
     })
 
@@ -65,12 +66,13 @@ Current cpt: {"True": 0.5}`)
           validNodeCpt(node, network)
         }).toThrow(`[Node "node-id"]: All probabilities must be a number.
 
-Probability value for "False": "0.5"
-Current cpt: {"False": "0.5", "True": 0.5}`)
+Node cpt type for "False": String
+Node cpt for "False": "0.5"
+Node cpt: {"False": "0.5", "True": 0.5}`)
       })
     })
 
-    describe('and all probabilities are a number', () => {
+    describe('and all probabilities are numbers', () => {
       const node = {
         id: 'node-id',
         states: ['True', 'False'],
@@ -86,7 +88,7 @@ Current cpt: {"False": "0.5", "True": 0.5}`)
     })
   })
 
-  describe('When node "cpt" an array', () => {
+  describe('When node "cpt" is an array', () => {
     describe('and has not all parents combinations', () => {
       const node = {
         id: 'node-id',
@@ -104,14 +106,14 @@ Current cpt: {"False": "0.5", "True": 0.5}`)
           validNodeCpt(node, network)
         }).toThrow(`[Node "node-id"]: The node cpt has one missing combination.
 
-Missing combination: {"node1": "False"}
-All node combinations: [{"node1": "True"}]
-All combinations needed: [{"node1": "True"}, {"node1": "False"}]`)
+Missing node cpt combination (when): {"node1": "False"}
+Node cpt combinations (when's): [{"node1": "True"}]
+Combinations needed: [{"node1": "True"}, {"node1": "False"}]`)
       })
     })
 
     describe('and has all parents combinations', () => {
-      describe('and one invalid combination', () => {
+      describe('and has one invalid combination', () => {
         let warn: jest.SpyInstance
         const node = {
           id: 'node-id',
@@ -138,9 +140,9 @@ All combinations needed: [{"node1": "True"}, {"node1": "False"}]`)
 
           expect(warn).toHaveBeenCalledWith(`[Node "node-id"]: The node cpt has one extra/invalid combination.
 
-Invalid combination: {"invalid-node": "True"}
-All node combinations: [{"invalid-node": "True"}, {"node1": "True"}, {"node1": "False"}]
-All combinations needed: [{"node1": "True"}, {"node1": "False"}]`)
+Invalid node cpt combination (when): {"invalid-node": "True"}
+Node cpt combinations (when's): [{"invalid-node": "True"}, {"node1": "True"}, {"node1": "False"}]
+Combinations needed: [{"node1": "True"}, {"node1": "False"}]`)
         })
       })
 
@@ -161,7 +163,7 @@ All combinations needed: [{"node1": "True"}, {"node1": "False"}]`)
             validNodeCpt(node, network)
           }).toThrow(`[Node "node-id"]: Missing probability for "True" state.
 
-Current cpt: {"False": 0.5}`)
+Node cpt: {"False": 0.5}`)
         })
       })
 
@@ -182,12 +184,13 @@ Current cpt: {"False": 0.5}`)
             validNodeCpt(node, network)
           }).toThrow(`[Node "node-id"]: All probabilities must be a number.
 
-Probability value for "True": "0.5"
-Current cpt: {"False": 0.5, "True": "0.5"}`)
+Node cpt type for "True": String
+Node cpt for "True": "0.5"
+Node cpt: {"False": 0.5, "True": "0.5"}`)
         })
       })
 
-      describe('and all probabilities are a number', () => {
+      describe('and all probabilities are numbers', () => {
         const node = {
           id: 'node-id',
           states: ['True', 'False'],

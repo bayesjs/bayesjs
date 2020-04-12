@@ -23,7 +23,8 @@ Node: {"id": "node-id"}`)
         validNodeStates(node)
       }).toThrow(`[Node "node-id"]: The node states must be an array of strings.
 
-Current states: "states"`)
+Node states type: String
+Node states: "states"`)
     })
   })
 
@@ -31,13 +32,13 @@ Current states: "states"`)
     describe('and is empty', () => {
       const node = { id: 'node-id', states: [] }
 
-      it('throws an error that node states contain at least one string', () => {
+      it('throws an error that node states must contain at least one string', () => {
         expect(() => {
           // @ts-ignore
           validNodeStates(node)
         }).toThrow(`[Node "node-id"]: The node states must contain at least one string.
 
-Current states: []`)
+Node states: []`)
       })
     })
 
@@ -51,8 +52,9 @@ Current states: []`)
             validNodeStates(node)
           }).toThrow(`[Node "node-id"]: All node states must be strings.
 
-Current states: ["True", false]
-Wrong state: false`)
+Node state type: Boolean
+Node state: false
+Node states: ["True", false]`)
         })
       })
 

@@ -23,12 +23,13 @@ Node: {"states": ["T", "F"]}`)
         validNodeId(node)
       }).toThrow(`The node id must be a string.
 
+Node id type: Number
 Node id: 123
 Node: {"id": 123}`)
     })
   })
 
-  describe('When node has "id" but is not a string', () => {
+  describe('When node has "id" and is a string', () => {
     const node = { id: 'node-id' }
 
     it('does not throws an error', () => {

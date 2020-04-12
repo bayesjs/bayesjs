@@ -1,4 +1,4 @@
-import { isNil, toString } from 'ramda'
+import { isNil, toString, type } from 'ramda'
 
 import { INode } from '../../types'
 import { isNotString } from '../../utils'
@@ -13,6 +13,7 @@ Node: ${toString(node)}`)
   if (isNotString(node.id)) {
     throw new Error(`The node id must be a string.
 
+Node id type: ${type(node.id)}
 Node id: ${toString(node.id)}
 Node: ${toString(node)}`)
   }

@@ -5,7 +5,7 @@ import validNode from './validations/node'
 
 const validIfNodeIsAlreadyInNetwork = (node: INode, network: INetwork) => {
   if (has(node.id, network)) {
-    throw new Error(`[Node "${node.id}"]: This node is already added in the network.`)
+    throw new Error(`[Node "${node.id}"]: This node is already added to the network.`)
   }
 }
 
