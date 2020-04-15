@@ -31,7 +31,6 @@ import {
 } from 'ramda'
 import {
   buildCombinations,
-  flager,
   getNodeIdsWithoutParents,
   includesFlipped,
   objectEqualsByFirstObjectKeys,
@@ -154,13 +153,13 @@ const bestCliqueRoot: (cliques: IClique[]) => IClique = head
 
 const getCollectEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
   const order: ICollectEvidenceOrder[] = []
-  const { isNotMarked, mark } = flager()
+  const mark = new Set()
   const cliqueRoot = bestCliqueRoot(cliques)
 
   const process = (id: string, parentId?: string) => {
-    mark(id)
+    mark.add(id)
 
-    const neighbors = junctionTree.getNeighborsOf(id).filter(isNotMarked)
+    const neighbors = junctionTree.getNeighborsOf(id).filter(cliqueId => !mark.has(cliqueId))
 
     for (const neighbor of neighbors) {
       process(neighbor, id)
@@ -178,13 +177,13 @@ const getCollectEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
 
 const getDistributeEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
   const order: IDistributeEvidenceOrder[] = []
-  const { isNotMarked, mark } = flager()
+  const mark = new Set()
   const cliqueRoot = bestCliqueRoot(cliques)
 
   const process = (id: string) => {
-    mark(id)
+    mark.add(id)
 
-    const neighbors = junctionTree.getNeighborsOf(id).filter(isNotMarked)
+    const neighbors = junctionTree.getNeighborsOf(id).filter(cliqueId => !mark.has(cliqueId))
 
     for (const neighborId of neighbors) {
       order.push({ id, neighborId })
