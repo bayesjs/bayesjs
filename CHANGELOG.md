@@ -1,3 +1,11 @@
+### [0.6.2](https://github.com/bayesjs/bayesjs/compare/v0.6.1...v0.6.2) (2020-04-15)
+
+
+### :recycle: Refactors
+
+* **junction-tree:** remove unnecessary `flager` helper ([a1afb66](https://github.com/bayesjs/bayesjs/commit/a1afb665bae3d7f4d72b19817bb263fd4e74637c))
+* **utils:** remove unnecessary `networkToNodeList` method ([afa15f0](https://github.com/bayesjs/bayesjs/commit/afa15f0e2794cdd13bf9a3939c3de68b249eae8f))
+
 ## [0.6.1](https://github.com/bayesjs/bayesjs/compare/v0.6.0...v0.6.1) (2020-04-12)
 
 # [0.6.0](https://github.com/bayesjs/bayesjs/compare/v0.5.0...v0.6.0) (2020-03-30)
