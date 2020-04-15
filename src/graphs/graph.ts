@@ -4,7 +4,7 @@ import {
   INetwork,
 } from '../types'
 
-import { networkToNodeList } from '../utils'
+import { getNodesFromNetwork } from '../utils'
 
 const addNodeMaker = (nodes: string[]) => (nodeId: string) =>
   nodes.push(nodeId)
@@ -43,7 +43,7 @@ const removeEdgeMaker = (edges: IEdge[]) => (nodeA: string, nodeB: string) => {
 }
 
 const areConnectedMaker = (edges: IEdge[]) => (nodeA: string, nodeB: string) => edges.some(([edge1, edge2]) => (edge1 === nodeA && edge2 === nodeB) ||
-      (edge1 === nodeB && edge2 === nodeA))
+  (edge1 === nodeB && edge2 === nodeA))
 
 const getNeighborsOfMaker = (edges: IEdge[]) => (nodeId: string) => {
   const neighbors = []
@@ -75,7 +75,7 @@ const cloneMaker = (nodes: string[], edges: IEdge[]) => () => {
 
 const createNodesAndEdgesByNetwork = (network?: INetwork) => {
   const allNodes = network
-    ? networkToNodeList(network)
+    ? getNodesFromNetwork(network)
     : []
 
   const nodes = allNodes.map(node => node.id)

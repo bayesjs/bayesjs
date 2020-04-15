@@ -1,9 +1,10 @@
-import { INetwork, IGraph } from '../types'
+import { IGraph, INetwork } from '../types'
+
 import { createGraph } from './graph'
-import { networkToNodeList } from '../utils'
+import { getNodesFromNetwork } from '../utils'
 
 export const buildMoralGraph = (network: INetwork): IGraph => {
-  const nodes = networkToNodeList(network)
+  const nodes = getNodesFromNetwork(network)
   const moralGraph = createGraph(network)
 
   for (const node of nodes) {

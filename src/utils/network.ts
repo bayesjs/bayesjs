@@ -18,12 +18,6 @@ import {
 import { addNode } from '..'
 import { isNotEmpty } from './fp'
 
-export const networkToNodeList = (network: INetwork): INodeList => {
-  const nodeIds = Object.keys(network)
-
-  return nodeIds.reduce((list, nodeIs) => ([...list, network[nodeIs]]), [] as INode[])
-}
-
 const everyInArray = (array1: string[], array2: string[]) => array1.every(parent => array2.indexOf(parent) !== -1)
 
 const getNext = (oNodes: INodeList) => {
