@@ -14,7 +14,48 @@
         "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
       }
     }],
-    "@semantic-release/release-notes-generator",
+    ["@semantic-release/release-notes-generator", {
+      "preset": "conventionalcommits",
+      "presetConfig": {
+        "types": [
+          {
+            "type": "feat",
+            "section": ":sparkles: News",
+            "hidden": false
+          },
+          {
+            "type": "fix",
+            "section": ":bug: Fixes",
+            "hidden": false
+          },
+          {
+            "type": "docs",
+            "section": ":memo: Documentation",
+            "hidden": false
+          },
+          {
+            "type": "refactor",
+            "section": ":recycle: Refactors",
+            "hidden": false
+          },
+          {
+            "type": "perf",
+            "section": ":zap: Performance",
+            "hidden": false
+          },
+          {
+            "type": "improvement",
+            "section": ":art: Improvements",
+            "hidden": false
+          },
+          {
+            "type": "build",
+            "section": ":building_construction: Build",
+            "hidden": false
+          }
+        ]
+      }
+    }],
     "@semantic-release/changelog",
     "@semantic-release/npm",
     ["@semantic-release/git", {
