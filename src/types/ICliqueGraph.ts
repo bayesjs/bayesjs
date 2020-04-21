@@ -1,7 +1,6 @@
-import { IGraph, IClique, ISepSet } from '.'
+import { IClique, IGraph } from '.'
 
 export interface ICliqueGraph {
-  cliqueGraph: IGraph;
+  graph: IGraph;
   cliques: IClique[];
-  sepSets: ISepSet[];
 }
