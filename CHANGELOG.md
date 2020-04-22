@@ -1,3 +1,10 @@
+### [0.6.3](https://github.com/bayesjs/bayesjs/compare/v0.6.2...v0.6.3) (2020-04-22)
+
+
+### :recycle: Refactors
+
+* **graph:** refactor graphs used on junction tree algorithm ([4516b34](https://github.com/bayesjs/bayesjs/commit/4516b349bd39edf1fb945061112f8ff540a5d7c6))
+
 ### [0.6.2](https://github.com/bayesjs/bayesjs/compare/v0.6.1...v0.6.2) (2020-04-15)
 
 
