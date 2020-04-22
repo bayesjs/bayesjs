@@ -7,10 +7,11 @@ import {
 } from '../../types'
 import { isNil, pipe } from 'ramda'
 
-import { buildCliqueGraph } from '../../graphs/cliqueGraph'
-import { buildJunctionTree } from '../../graphs/junctionTreeGraph'
-import { buildMoralGraph } from '../../graphs/moralGraph'
-import { buildTriangulatedGraph } from '../../graphs/triangulatedGraph'
+import { createCliqueGraph } from '../../graphs/clique'
+import { createGraphBuilder } from '../../graphs/builder'
+import { createMoralGraph } from '../../graphs/moral'
+import { createSepSets } from '../../utils'
+import { createTriangulatedGraph } from '../../graphs/triangulated'
 
 interface ICreateCliquesResult {
   cliques: IClique[];
@@ -20,19 +21,19 @@ interface ICreateCliquesResult {
 
 const createCliquesWeakMap = new WeakMap<INetwork, ICreateCliquesResult>()
 
-const createCliquesGraph: (network: INetwork) => ICliqueGraph = pipe(
-  buildMoralGraph,
-  buildTriangulatedGraph,
-  buildCliqueGraph,
+const createCliquesGraph: (graph: IGraph) => ICliqueGraph = pipe(
+  createMoralGraph,
+  createTriangulatedGraph,
+  createCliqueGraph,
 )
 
 export default (network: INetwork): ICreateCliquesResult => {
   const cached = createCliquesWeakMap.get(network)
 
   if (isNil(cached)) {
-    const { cliqueGraph, cliques, sepSets } = createCliquesGraph(network)
-    const junctionTree = buildJunctionTree(cliqueGraph, cliques, sepSets)
-    const result = { cliques, sepSets, junctionTree }
+    const { graph, cliques } = createCliquesGraph(createGraphBuilder(network))
+    const sepSets = createSepSets(cliques, graph.removeEdge)
+    const result = { cliques, sepSets, junctionTree: graph }
 
     createCliquesWeakMap.set(network, result)
 

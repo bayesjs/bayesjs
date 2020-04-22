@@ -159,7 +159,7 @@ const getCollectEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
   const process = (id: string, parentId?: string) => {
     mark.add(id)
 
-    const neighbors = junctionTree.getNeighborsOf(id).filter(cliqueId => !mark.has(cliqueId))
+    const neighbors = junctionTree.getNodeEdges(id).filter(cliqueId => !mark.has(cliqueId))
 
     for (const neighbor of neighbors) {
       process(neighbor, id)
@@ -183,7 +183,7 @@ const getDistributeEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) =>
   const process = (id: string) => {
     mark.add(id)
 
-    const neighbors = junctionTree.getNeighborsOf(id).filter(cliqueId => !mark.has(cliqueId))
+    const neighbors = junctionTree.getNodeEdges(id).filter(cliqueId => !mark.has(cliqueId))
 
     for (const neighborId of neighbors) {
       order.push({ id, neighborId })

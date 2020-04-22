@@ -59,6 +59,8 @@ export const getNodeParentsAndId: (node: INode) => string[] = converge(append, [
 export const hasNotNodeParents: (node: INode) => boolean = complement(hasNodeParents)
 export const getNodesFromNetwork: (network: INetwork) => INode[] = values
 
+export const filterNodeWithParents: (nodes: INode[]) => INode[] = filter(hasNodeParents)
+
 export const getNodeIdsWithoutParents: (network: INetwork) => string[] = pipe(
   getNodesFromNetwork,
   filter(hasNotNodeParents),

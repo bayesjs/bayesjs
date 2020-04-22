@@ -6,12 +6,12 @@ import {
   includes,
   intersection,
   invoker,
+  is,
   isEmpty,
   isNil,
   keys,
   pick,
   pipe,
-  is,
   prop,
   sort,
 } from 'ramda'
