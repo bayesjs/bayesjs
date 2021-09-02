@@ -4,16 +4,10 @@ import {
   any,
   append,
   clone,
-  converge,
   drop,
   equals,
   forEach,
-  includes,
-  length,
-  pipe,
-  prop,
   reduce,
-  subtract,
 } from 'ramda'
 
 import { isNotEmpty } from './fp'
@@ -21,20 +15,17 @@ import { isNotEmpty } from './fp'
 import { sort } from 'timsort'
 
 const forEachIndexed = addIndex<IClique>(forEach)
-const sepSetNodesLength: (sepSet: ISepSet) => number = pipe(prop('sharedNodes'), length)
+const sepSetCompare: (a: ISepSet, b: ISepSet) => number = (a, b) =>
+  b.sharedNodes.length - a.sharedNodes.length
 
-const getSharedNodes = (cliqueA: IClique, cliqueB: IClique) =>
-  reduce(
-    (acc, nodeId) => {
-      if (includes(nodeId, cliqueB.nodeIds)) {
-        return append(nodeId, acc)
-      }
-
-      return acc
-    },
-    [] as string[],
-    cliqueA.nodeIds,
-  )
+// Find the shared nodes in two cliques (O(n log(n))).
+const getSharedNodes = (cliqueA: IClique, cliqueB: IClique) => {
+  const A = new Set(cliqueA.nodeIds)
+  const B = new Set(cliqueB.nodeIds)
+  const union = Array(...new Set([...cliqueA.nodeIds, ...cliqueB.nodeIds]))
+  const result = union.filter(x => A.has(x) && B.has(x))
+  return result
+}
 
 const hasCycle = (cliques: IClique[], sepSets: ISepSet[]) => {
   const visited: { [key: string]: boolean } = {}
@@ -77,7 +68,7 @@ const hasCycle = (cliques: IClique[], sepSets: ISepSet[]) => {
 const sortSepSets = (sepSets: ISepSet[]) => {
   const finalSepSets = clone(sepSets)
 
-  sort(finalSepSets, converge(subtract, [sepSetNodesLength, sepSetNodesLength]))
+  sort(finalSepSets, sepSetCompare)
 
   return finalSepSets
 }

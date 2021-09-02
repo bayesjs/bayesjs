@@ -1,6 +1,10 @@
 import { INode } from '../../src'
 import { createCliques as buildCliques } from '../../src/utils/create-cliques'
+import { createNetwork } from '../../src/utils'
 import { createGraphBuilder } from '../../src/graphs'
+import createJTreeCliques from '../../src/inferences/junctionTree/create-cliques'
+import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
+const hugeNetwork = createNetwork(...hugeNetworkAllNodes)
 
 const nodeA: INode = {
   id: 'A',
@@ -124,5 +128,47 @@ describe('Create Cliques Utils', () => {
 
       expect(clique.nodeIds).toEqual(['F', 'D', 'E'])
     })
+  })
+})
+
+const { cliques: hugeNetCliques } = createJTreeCliques(hugeNetwork)
+const expectedCliques = [
+  ['node1', 'node13', 'node16', 'node17', 'node24', 'node25', 'node37'],
+  ['node1', 'node24', 'node31'],
+  ['node1', 'node24', 'node32'],
+  ['node1', 'node24', 'node33'],
+  ['node1', 'node24', 'node34'],
+  ['node1', 'node24', 'node35'],
+  ['node2', 'node3', 'node4', 'node5', 'node6', 'node7', 'node8', 'node9'],
+  ['node2', 'node10', 'node38'],
+  ['node10', 'node11', 'node12'],
+  ['node13', 'node14', 'node15'],
+  ['node13', 'node16', 'node17', 'node25', 'node36', 'node37'],
+  ['node17', 'node18', 'node23'],
+  ['node18', 'node19', 'node20', 'node21', 'node22'],
+  ['node25', 'node26', 'node27', 'node28', 'node29', 'node30'],
+  ['node37', 'node38', 'node39'],
+].map(x => x.sort()).sort()
+
+describe('Huge Network', () => {
+  it('has 15 cliques', () => {
+    const foundCliques = hugeNetCliques.map(x => x.nodeIds.sort()).sort()
+    expect(foundCliques[0]).toEqual(expectedCliques[0])
+    expect(foundCliques[1]).toEqual(expectedCliques[1])
+    expect(foundCliques[2]).toEqual(expectedCliques[2])
+    expect(foundCliques[3]).toEqual(expectedCliques[3])
+    expect(foundCliques[4]).toEqual(expectedCliques[4])
+    expect(foundCliques[5]).toEqual(expectedCliques[5])
+    expect(foundCliques[6]).toEqual(expectedCliques[6])
+    expect(foundCliques[7]).toEqual(expectedCliques[7])
+    expect(foundCliques[8]).toEqual(expectedCliques[8])
+    expect(foundCliques[9]).toEqual(expectedCliques[9])
+    expect(foundCliques[10]).toEqual(expectedCliques[10])
+    expect(foundCliques[11]).toEqual(expectedCliques[11])
+    expect(foundCliques[12]).toEqual(expectedCliques[12])
+    expect(foundCliques[13]).toEqual(expectedCliques[13])
+    expect(foundCliques[14]).toEqual(expectedCliques[14])
+    expect(foundCliques[15]).toEqual(expectedCliques[15])
+    expect(hugeNetCliques.length).toBe(15)
   })
 })

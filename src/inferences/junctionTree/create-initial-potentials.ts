@@ -29,18 +29,40 @@ import {
   objectEqualsByIntersectionKeys,
 } from '../../utils'
 
-const createFactorForClique = (network: INetwork, clique: IClique): string[] =>
+/** * Return a list of factors that care included in the given clique.   Each factor can
+ * be assigned to exactly one clique, and that clique must include all of it's parents.
+ */
+const createFactorForClique = (network: INetwork, clique: IClique, visited: Set<string>): string[] =>
   getNodesFromNetwork(network).reduce((acc, node) => {
-    if (hasNodeIdAndParentsInClique(clique, node)) {
+    if (hasNodeIdAndParentsInClique(clique, node) && !visited.has(node.id)) {
+      visited.add(node.id)
       return append(node.id, acc)
     }
-
     return acc
   }, [] as string[])
 
-const createICliqueFactors = (cliques: IClique[], network: INetwork): ICliqueFactors =>
-  reduce((acc, clique) => assoc(clique.id, createFactorForClique(network, clique), acc)
-    , {}, cliques)
+/** Return an object that associates each clique with the factors which it contains.
+ * Each factor can be assigned to exactly one clique, that that clique must include
+ * all of it's parents.   Note that for some network topologies, this may result in
+ * a choice for which clique to assign the factor
+ *
+ * Example, the network having the graph below:
+ *
+ *     A
+ *   / | \
+ *  V  V  V
+ * B-->C<--D
+ *
+ * has two cliques: {A,B,C} and {A,C,D}.   The factors A and C can be assigned to either
+ * clique, but not both.  To make inference easier, whenever possible we assign a factor to a clique
+ * with the fewer number of nodes.
+ * */
+const createICliqueFactors = (cliques: IClique[], network: INetwork): ICliqueFactors => {
+  const visited: Set<string> = new Set()
+
+  return reduce((acc, clique) => assoc(clique.id, createFactorForClique(network, clique, visited), acc)
+    , {}, cliques.sort((a, b) => a.nodeIds.length - b.nodeIds.length))
+}
 
 const mergeParentsAndCombination = (node: INode, combination: ICombinations) => reduce((acc, nodeId) => assoc(nodeId, combination[nodeId], acc), {}, node.parents)
 
@@ -63,13 +85,14 @@ const getPotentialValueForNodeWithoutParents = (combination: ICombinations, node
   return cpt[combinationValue]
 }
 
-const getPotentialValueForNode = curry((combination: ICombinations, node: INode) => {
-  if (hasNodeParents(node)) {
-    return getPotentialValueForNodeWithParents(combination, node)
-  }
+const getPotentialValueForNode: (combination: ICombinations) => (node: INode) => number =
+  curry((combination: ICombinations, node: INode) => {
+    if (hasNodeParents(node)) {
+      return getPotentialValueForNodeWithParents(combination, node)
+    }
 
-  return getPotentialValueForNodeWithoutParents(combination, node)
-})
+    return getPotentialValueForNodeWithoutParents(combination, node)
+  })
 
 const getPotentialValueForNodeIds = (network: INetwork, combination: ICombinations, nodeIds: string[]) => {
   const nodes = map(item => network[item], nodeIds)
@@ -86,10 +109,11 @@ const getPotentialValue = (combination: ICombinations, network: INetwork, given:
   return 0
 }
 
-const createCliquePotential = curry((clique: IClique, network: INetwork, given: ICombinations, cliqueFactors: ICliqueFactors, combination: ICombinations): ICliquePotentialItem => ({
-  when: combination,
-  then: getPotentialValue(combination, network, given, cliqueFactors[clique.id]),
-}))
+const createCliquePotential: (clique: IClique, network: INetwork, given: ICombinations, cliqueFactors: ICliqueFactors) => (combination: ICombinations) => ICliquePotentialItem =
+  curry((clique: IClique, network: INetwork, given: ICombinations, cliqueFactors: ICliqueFactors, combination: ICombinations) => ({
+    when: combination,
+    then: getPotentialValue(combination, network, given, cliqueFactors[clique.id]),
+  }))
 
 const createCliquePotentials = (clique: IClique, network: INetwork, given: ICombinations, cliqueFactors: ICliqueFactors) => {
   const combinations = buildCombinations(network, clique.nodeIds)
@@ -100,9 +124,12 @@ const createCliquePotentials = (clique: IClique, network: INetwork, given: IComb
 export default (cliques: IClique[], network: INetwork, given: ICombinations): ICliquePotentials => {
   const cliqueFactors = createICliqueFactors(cliques, network)
 
-  return reduce(
-    (acc, clique) => assoc(clique.id, createCliquePotentials(clique, network, given, cliqueFactors), acc),
-    {},
-    cliques,
-  )
+  const cliquePotentials: ICliquePotentials = {}
+
+  for (const clique of cliques) {
+    const cliquePotential: ICliquePotentialItem[] = createCliquePotentials(clique, network, given, cliqueFactors)
+    cliquePotentials[clique.id] = cliquePotential
+  }
+
+  return cliquePotentials
 }
