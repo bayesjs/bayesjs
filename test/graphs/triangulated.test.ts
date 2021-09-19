@@ -1,6 +1,12 @@
-import { createTriangulatedGraph as buildTriangulatedGraph, createGraphBuilder } from '../../src/graphs'
+import { createTriangulatedGraph as buildTriangulatedGraph, createGraphBuilder, createMoralGraph } from '../../src/graphs'
+import { createNetwork } from '../../src/utils'
+import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
 
 import { INode } from '../../src'
+
+const hugeNetwork = createNetwork(...hugeNetworkAllNodes)
+const hugeGraph = createGraphBuilder(hugeNetwork)
+const moralizedHugeGraph = createMoralGraph(hugeGraph)
 
 const nodeA: INode = {
   id: 'A',
@@ -112,5 +118,15 @@ describe('Triangulated Graph', () => {
     const triangulatedGraph = createTriangulatedGraph()
 
     expect(triangulatedGraph.hasEdge('D', 'C')).toBeTruthy()
+  })
+})
+
+describe('Triangulated moral graph of huge network graph', () => {
+  it('has 83 more connections (edges) than the original graph', () => {
+    const triangulatedGraph = buildTriangulatedGraph(moralizedHugeGraph)
+    const moralizedGraphEdges = moralizedHugeGraph.getEdges().map(x => x.sort())
+    const triangulatedGraphEdges = triangulatedGraph.getEdges().map(x => x.sort())
+
+    expect(triangulatedGraphEdges).toEqual(moralizedGraphEdges)
   })
 })
