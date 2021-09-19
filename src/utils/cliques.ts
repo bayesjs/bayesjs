@@ -8,20 +8,15 @@ import {
 import {
   all,
   always,
-  assoc,
   curry,
-  divide,
   equals,
   filter,
   head,
   identity,
   ifElse,
   intersection,
-  isNil,
   keys,
   length,
-  map,
-  mapObjIndexed,
   minBy,
   pipe,
   pluck,
@@ -79,7 +74,7 @@ const checkPotentialByNodes = curry((nodes: ICombinations, potential: ICliquePot
       const whenValue = when[nodeId]
       const nodeValue = nodes[nodeId]
 
-      return isNil(nodeValue) || whenValue === nodeValue
+      return nodeValue == null || whenValue === nodeValue
     },
     keys(when),
   )
@@ -91,12 +86,19 @@ export const filterCliquePotentialsByNodeCombinations = (potentials: ICliquePote
     potentials,
   )
 
-export const normalizeCliquePotentials = (cliquesPotentials: ICliquePotentials) =>
-  mapObjIndexed(
-    (potentials) =>
-      map(
-        potential => assoc('then', divide(potential.then, sumCliquePotentials(potentials)), potential),
-        potentials,
-      ),
-    cliquesPotentials,
+export const normalizeCliquePotential = (potentials: ICliquePotentialItem[]) => {
+  const total = sumCliquePotentials(potentials)
+  return potentials.map(potential => {
+    potential.then = potential.then / total
+    return potential
+  },
   )
+}
+
+export const normalizeCliquePotentials = (cliquesPotentials: ICliquePotentials) => {
+  for (const key of Object.keys(cliquesPotentials)) {
+    cliquesPotentials[key] = normalizeCliquePotential(cliquesPotentials[key])
+  }
+
+  return cliquesPotentials
+}

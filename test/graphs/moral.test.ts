@@ -1,6 +1,10 @@
 import { createGraphBuilder, createMoralGraph } from '../../src/graphs'
+import { createNetwork } from '../../src/utils'
+import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
 
 import { INode } from '../../src'
+const hugeNetwork = createNetwork(...hugeNetworkAllNodes)
+const hugeGraph = createGraphBuilder(hugeNetwork)
 
 const nodeA: INode = {
   id: 'A',
@@ -94,5 +98,14 @@ describe('Moral Graph', () => {
     const moralGraph = createMoralGraph(graph)
 
     expect(moralGraph.hasEdge('E', 'D')).toBeTruthy()
+  })
+})
+
+describe('Moral of huge network graph', () => {
+  it('has 53 more connections (edges) than the original graph', () => {
+    const moralGraph = createMoralGraph(hugeGraph)
+    const moralGraphEdges = moralGraph.getEdges()
+
+    expect(moralGraphEdges.length - hugeGraph.getEdges().length).toBe(53)
   })
 })

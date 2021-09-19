@@ -9,7 +9,6 @@ import {
   ISepSet,
 } from '../../types'
 import {
-  any,
   anyPass,
   append,
   assoc,
@@ -26,15 +25,11 @@ import {
   pipe,
   prop,
   reduce,
-  reject,
   sum,
 } from 'ramda'
 import {
   buildCombinations,
-  getNodeIdsWithoutParents,
-  includesFlipped,
   objectEqualsByFirstObjectKeys,
-  sortStringsAsc,
 } from '../../utils'
 
 interface ICollectEvidenceOrder {
@@ -47,10 +42,11 @@ interface IDistributeEvidenceOrder {
   neighborId: string;
 }
 
-const hasSepSetCliques = curry((cliqueIdA: string, cliqueIdB: string, sepSet: ISepSet) =>
+const hasSepSetCliques: (cliqueIdA: string, cliqueIdB: string) => (sepSet: ISepSet) => boolean =
+curry((cliqueIdA: string, cliqueIdB: string, sepSet: ISepSet) =>
   sepSet.ca === cliqueIdB && sepSet.cb === cliqueIdA)
 
-const findSepSetWithCliques = (cliqueIdA: string, cliqueIdB: string, sepSets: ISepSet[]): ISepSet | undefined =>
+export const findSepSetWithCliques = (cliqueIdA: string, cliqueIdB: string, sepSets: ISepSet[]): ISepSet | undefined =>
   find(
     anyPass([
       hasSepSetCliques(cliqueIdA, cliqueIdB),
@@ -61,16 +57,7 @@ const findSepSetWithCliques = (cliqueIdA: string, cliqueIdB: string, sepSets: IS
 
 const getSepSetForCliques = (network: INetwork, sepSets: ISepSet[], id: string, neighborId: string) => {
   const sepSet = findSepSetWithCliques(id, neighborId, sepSets)
-
-  if (sepSet) {
-    const nonParentNodes = getNodeIdsWithoutParents(network)
-
-    return reject(
-      includesFlipped(nonParentNodes),
-      sortStringsAsc(sepSet.sharedNodes),
-    )
-  }
-
+  if (sepSet) return sepSet.sharedNodes.sort()
   throw new Error(`SepSet not found for cliques with id: "${id}" and "${neighborId}"`)
 }
 
@@ -82,7 +69,8 @@ const createMessagesByCliques: (cliques: IClique[]) => ICliquePotentialMessages 
   {},
 )
 
-const createInitialMessage = (combinations: ICombinations[], potentials: ICliquePotentialItem[]) =>
+/** Marginalize the clique potentials modulo a separation set. */
+export const marginalizePotentials = (network: INetwork, sepSet: string[], potentials: ICliquePotentialItem[]): ICliquePotentialItem[] =>
   reduce(
     (acc, cpt) => {
       const then = sum(
@@ -95,14 +83,14 @@ const createInitialMessage = (combinations: ICombinations[], potentials: IClique
       return append(newCpt, acc)
     },
     [] as ICliquePotentialItem[],
-    createEmptyCombinations(combinations),
+    createEmptyCombinations(buildCombinations(network, sepSet)),
   )
 
-const mergeMessages = (messageA: ICliquePotentialItem[], messageB: ICliquePotentialItem[]) =>
+const dividePotentials = (dividend: ICliquePotentialItem[], divisor: ICliquePotentialItem[]) =>
   map(
     row => {
       const { when, then } = row
-      const currentMessageReceived = messageB.find(potential => objectEqualsByFirstObjectKeys(when, potential.when))
+      const currentMessageReceived = divisor.find(potential => objectEqualsByFirstObjectKeys(when, potential.when))
 
       if (currentMessageReceived) {
         return assoc('then', divide(then, currentMessageReceived.then || 1), row)
@@ -110,18 +98,8 @@ const mergeMessages = (messageA: ICliquePotentialItem[], messageB: ICliquePotent
 
       return row
     },
-    messageA,
+    dividend,
   )
-
-const createMessage = (combinations: ICombinations[], potentials: ICliquePotentialItem[], messageReceived?: ICliquePotentialItem[]): ICliquePotentialItem[] => {
-  const message = createInitialMessage(combinations, potentials)
-
-  if (messageReceived) {
-    return mergeMessages(message, messageReceived)
-  }
-
-  return message
-}
 
 const getFirstWhenKeys: (obj: ICliquePotentialItem[]) => string[] = pipe(path([0, 'when']), keys)
 
@@ -149,98 +127,71 @@ const absorbMessage = (potentials: ICliquePotentialItem[], messagePotentials: IC
   )
 }
 
+/** * Collect the evidence a the first element in the list of cliques.   Efficiency of the
+ * evidence collection assumes that the cliques are in topological sorted order.
+ */
 const bestCliqueRoot: (cliques: IClique[]) => IClique = head
 
-const getCollectEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
-  const order: ICollectEvidenceOrder[] = []
-  const mark = new Set()
-  const cliqueRoot = bestCliqueRoot(cliques)
+const passMessage = (network: INetwork, sepSets: ISepSet[], cliquesPotentials: ICliquePotentials, separatorPotentials: ICliquePotentialMessages, src: string, trg: string) => {
+  const i = (src < trg) ? src : trg
+  const j = (src < trg) ? trg : src
+  const priorSeparatorPotential = separatorPotentials[i].get(j)
+  const sepSet = getSepSetForCliques(network, sepSets, src, trg)
+  const marginalizedSeparatorPotential = marginalizePotentials(network, sepSet, cliquesPotentials[src])
+  const message = priorSeparatorPotential
+    ? dividePotentials(marginalizedSeparatorPotential, priorSeparatorPotential)
+    : marginalizedSeparatorPotential
 
+  cliquesPotentials[trg] = absorbMessage(cliquesPotentials[trg], message)
+  separatorPotentials[i].set(j, marginalizedSeparatorPotential)
+}
+
+const collectCliquesEvidence = (network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], separatorPotentials: ICliquePotentialMessages, cliquesPotentials: ICliquePotentials, rootId: string) => {
+  // Determine the traversal order starting from the given node, recursively visiting
+  // the neighbors of the given node.
   const process = (id: string, parentId?: string) => {
-    mark.add(id)
-
-    const neighbors = junctionTree.getNodeEdges(id).filter(cliqueId => !mark.has(cliqueId))
-
+    const neighbors = junctionTree.getNodeEdges(id)
     for (const neighbor of neighbors) {
+      if (parentId && neighbor === parentId) continue
       process(neighbor, id)
     }
 
-    if (parentId) {
-      order.push({ id, parentId })
+    if (!parentId) return
+    passMessage(network, sepSets, cliquesPotentials, separatorPotentials, id, parentId)
+  }
+
+  // start processing from the best root node.
+  process(rootId)
+  return cliquesPotentials
+}
+
+const distributeCliquesEvidence = (network: INetwork, junctionTree: IGraph, sepSets: ISepSet[], separatorPotentials: ICliquePotentialMessages, cliquesPotentials: ICliquePotentials, rootId: string) => {
+  // Determine the traversal order starting from the given node, recursively visiting
+  // the neighbors of the given node.
+  const process = (id: string, parentId?: string) => {
+    const neighbors = junctionTree.getNodeEdges(id)
+
+    for (const neighbor of neighbors) {
+      if (parentId && neighbor === parentId) continue
+      passMessage(network, sepSets, cliquesPotentials, separatorPotentials, id, neighbor)
+      process(neighbor, id)
     }
   }
 
-  process(cliqueRoot.id)
-
-  return order
+  // start processing from the best root node.
+  process(rootId)
+  return cliquesPotentials
 }
-
-const getDistributeEvidenceOrder = (cliques: IClique[], junctionTree: IGraph) => {
-  const order: IDistributeEvidenceOrder[] = []
-  const mark = new Set()
-  const cliqueRoot = bestCliqueRoot(cliques)
-
-  const process = (id: string) => {
-    mark.add(id)
-
-    const neighbors = junctionTree.getNodeEdges(id).filter(cliqueId => !mark.has(cliqueId))
-
-    for (const neighborId of neighbors) {
-      order.push({ id, neighborId })
-      process(neighborId)
-    }
-  }
-
-  process(cliqueRoot.id)
-
-  return order
-}
-
-const hasCliquePotentialAlreadyBeenAbsorbed = (messagesReceived: Map<string, ICliquePotentialItem[]>, message: ICliquePotentialItem[]): boolean => {
-  const messagesArray = [...messagesReceived.values()]
-
-  return any(equals(message), messagesArray)
-}
-
-const collectCliquesEvidence = (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], messages: ICliquePotentialMessages, cliquesPotentials: ICliquePotentials) =>
-  reduce(
-    (acc, { id, parentId }) => {
-      const potentials = acc[id]
-      const sepSet = getSepSetForCliques(network, sepSets, id, parentId)
-      const combinations = buildCombinations(network, sepSet)
-      const message = createMessage(combinations, potentials)
-      const messagesReceived = messages[parentId]
-
-      if (hasCliquePotentialAlreadyBeenAbsorbed(messagesReceived, message)) {
-        return acc
-      }
-
-      messagesReceived.set(id, message)
-      return assoc(parentId, absorbMessage(acc[parentId], message), acc)
-    },
-    cliquesPotentials,
-    getCollectEvidenceOrder(cliques, junctionTree),
-  )
-
-const distributeCliquesEvidence = (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], messages: ICliquePotentialMessages, cliquesPotentials: ICliquePotentials) =>
-  reduce(
-    (acc, { id, neighborId }) => {
-      const potentials = acc[id]
-      const messagesReceived = messages[id]
-      const sepSet = getSepSetForCliques(network, sepSets, id, neighborId)
-      const messageReceived = messagesReceived.get(neighborId)!
-      const combinations = buildCombinations(network, sepSet)
-      const message = createMessage(combinations, potentials!, messageReceived)
-
-      return assoc(neighborId, absorbMessage(acc[neighborId], message), acc)
-    },
-    cliquesPotentials,
-    getDistributeEvidenceOrder(cliques, junctionTree),
-  )
 
 export default (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], cliquesPotentials: ICliquePotentials): ICliquePotentials => {
+  // Create a store for the messages passed between cliques.   Initially this store is empty because no messages have been passed.
   const messages: ICliquePotentialMessages = createMessagesByCliques(cliques)
-  const collectedCliquesPotentials = collectCliquesEvidence(network, junctionTree, cliques, sepSets, messages, cliquesPotentials)
+  const rootId: string = bestCliqueRoot(cliques).id
 
-  return distributeCliquesEvidence(network, junctionTree, cliques, sepSets, messages, collectedCliquesPotentials)
+  // Update the potentials starting at the leaf nodes and moving to the roots
+  const collectedCliquesPotentials = collectCliquesEvidence(network, junctionTree, sepSets, messages, cliquesPotentials, rootId)
+  // Update the potentials starting at the root node and moving toward the leaves
+  const distributedCliquesPotentials = distributeCliquesEvidence(network, junctionTree, sepSets, messages, collectedCliquesPotentials, rootId)
+
+  return distributedCliquesPotentials
 }

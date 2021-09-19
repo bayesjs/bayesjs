@@ -1,6 +1,6 @@
 import { addIndex, drop, filter, forEach, head, minBy, reduce, tail } from 'ramda'
 
-import { IGraph } from '../types'
+import { IGraph, INode } from '../types'
 import { isNotEmpty } from '../utils'
 
 const forEachIndexed = addIndex<string>(forEach)
@@ -42,11 +42,37 @@ const createIterator = (graph: IGraph) => ({
 
 const getNodeIdsSorted = (graph: IGraph) => Array.from(createIterator(graph))
 
+/** * Given a graph, find the simplicial nodes of that graph.   A simplicial node has
+ * neighbors that are all connected to each other.   Simplicial nodes can safely be
+ * removed from the remainder graph prior to adding arcs during triangularization
+ */
+const findSimplicialNodes = (graph: IGraph) => {
+  const isSimplicial = (node: INode): boolean => {
+    const neighbors = graph.getNodeEdges(node.id)
+    let result = true
+
+    for (let i = 0; i < neighbors.length - 1 && result; i++) {
+      const neighborA = neighbors[i]
+      const nextNeighbors = drop(i + 1, neighbors)
+      result = nextNeighbors.every(neighborB => graph.hasEdge(neighborA, neighborB) || graph.hasEdge(neighborB, neighborA))
+    }
+    return result
+  }
+
+  return graph.getNodes().filter(x => isSimplicial(x)).map(x => x.id)
+}
+
 export const createTriangulatedGraph = (moralGraph: IGraph) => {
   const triangulatedGraph = moralGraph.clone()
   const clonedGraph = triangulatedGraph.clone()
+
+  // Find and remove the simplicial nodes from the remainder graph
+  const simplicialNodes = findSimplicialNodes(clonedGraph)
+  simplicialNodes.forEach(nodeId => clonedGraph.removeNodeId(nodeId))
+
   const nodeIds = getNodeIdsSorted(clonedGraph)
 
+  // Traverse the queue, adding the fill edges as required.
   forEach(
     nodeId => {
       const neighbors = clonedGraph.getNodeEdges(nodeId)
