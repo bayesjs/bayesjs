@@ -24,5 +24,6 @@ jobs:
       # script: skip
       deploy:
         provider: script
+        skip_cleanup: true
         script:
           - yarn run semantic-release
