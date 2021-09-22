@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/bayesjs/bayesjs.svg?branch=master)](https://travis-ci.org/bayesjs/bayesjs)
+[![Build Status](https://app.travis-ci.com/bayesjs/bayesjs.svg?branch=master)](https://app.travis-ci.com/bayesjs/bayesjs)
 [![Coverage Status](https://coveralls.io/repos/github/bayesjs/bayesjs/badge.svg)](https://coveralls.io/github/bayesjs/bayesjs)
 ![npm bundle size](https://img.shields.io/bundlephobia/min/bayesjs)
 [![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
