@@ -17,7 +17,7 @@ connected component.   This test uses the following network:
    A      a
   / \    / \
  B   C  b   c
-
+s
  where B and C are conditioned on A, and b and c are conditioned upon a.
  As originally implemented, the HUGIN algorithm performs message passing
  only for the connected component containing {A,B,C}, producing incorrect
