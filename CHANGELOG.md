@@ -1,3 +1,10 @@
+### [0.6.4](https://github.com/bayesjs/bayesjs/compare/v0.6.3...v0.6.4) (2021-09-22)
+
+
+### :bug: Fixes
+
+* **inference:** fix issue with inference returning uniform distribution for some variables ([4c04ca3](https://github.com/bayesjs/bayesjs/commit/4c04ca375d76072953a3505766e1e799a98210f8))
+
 ### [0.6.3](https://github.com/bayesjs/bayesjs/compare/v0.6.2...v0.6.3) (2020-04-22)
 
 
