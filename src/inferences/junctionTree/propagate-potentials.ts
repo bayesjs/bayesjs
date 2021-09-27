@@ -30,7 +30,6 @@ import {
   buildCombinations,
   objectEqualsByFirstObjectKeys,
 } from '../../utils'
-import { getConnectedComponents } from '../../utils/connected-components'
 
 interface ICollectEvidenceOrder {
   id: string;
@@ -178,7 +177,7 @@ const distributeCliquesEvidence = (network: INetwork, junctionTree: IGraph, sepS
   return cliquesPotentials
 }
 
-export default (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], cliquesPotentials: ICliquePotentials): ICliquePotentials => {
+export default (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], cliquesPotentials: ICliquePotentials, roots: string[]): ICliquePotentials => {
   // Create a store for the messages passed between cliques.   Initially this store is empty because no messages have been passed.
   const messages: ICliquePotentialMessages = createMessagesByCliques(cliques)
   const ccs: string[][] = getConnectedComponents(junctionTree)

@@ -15,6 +15,7 @@ import {
 import createCliques from './create-cliques'
 import getCliquesPotentials from './get-cliques-potentials'
 import { sum } from 'ramda'
+import { getConnectedComponents } from '../../utils/connected-components'
 
 const getResult = (cliques: IClique[], cliquesPotentials: ICliquePotentials, nodes: ICombinations) => {
   const cliquesNode = filterCliquesByNodeCombinations(cliques, nodes)
@@ -28,7 +29,9 @@ const getResult = (cliques: IClique[], cliquesPotentials: ICliquePotentials, nod
 
 export const infer: IInfer = (network: INetwork, nodes: ICombinations, given: ICombinations = {}): number => {
   const { cliques, sepSets, junctionTree } = createCliques(network)
-  const cliquesPotentials = getCliquesPotentials(cliques, network, junctionTree, sepSets, given)
+  const connectedComponents = getConnectedComponents(junctionTree)
+  const roots = connectedComponents.map(x => x[0])
+  const cliquesPotentials = getCliquesPotentials(cliques, network, junctionTree, sepSets, given, roots)
 
   return getResult(cliques, cliquesPotentials, nodes)
 }

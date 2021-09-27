@@ -11,6 +11,7 @@ import { isNotNil, normalizeCliquePotentials } from '../../utils'
 import createInitialPotentials from './create-initial-potentials'
 import { isNil } from 'ramda'
 import propagatePotential from './propagate-potentials'
+import { getConnectedComponents } from '../../utils/connected-components'
 
 const getCliquesPotentialsWeekMap = new WeakMap<IClique[], ICliquePotentials>()
 const getGivensWeekMap = new WeakMap<ICombinations, boolean>()
@@ -36,7 +37,8 @@ export default (cliques: IClique[], network: INetwork, junctionTree: IGraph, sep
 
   if (isNil(cached)) {
     const cliquesPotentials = createInitialPotentials(cliques, network, given)
-    const finalCliquesPotentials = propagatePotential(network, junctionTree, cliques, sepSets, cliquesPotentials)
+    const roots = getConnectedComponents(junctionTree).map(x => x[0])
+    const finalCliquesPotentials = propagatePotential(network, junctionTree, cliques, sepSets, cliquesPotentials, roots)
     const result = normalizeCliquePotentials(finalCliquesPotentials)
 
     setCachedValues(cliques, given, result)
