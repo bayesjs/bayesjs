@@ -1,10 +1,11 @@
-import { IInferenceEngine, ISepSet, INode, INetworkResult, ICptWithParents, ICptWithoutParents, INetwork, ICombinations, ICliquePotentials, IClique, IGraph, INodeResult } from '../../types'
+import { IInferenceEngine, ISepSet, INode, INetworkResult, IInferAllOptions, ICptWithParents, ICptWithoutParents, INetwork, ICombinations, ICliquePotentials, IClique, IGraph, INodeResult } from '../../types'
 import createCliques from './create-cliques'
 import createInitialPotentials from './create-initial-potentials'
 import propagatePotentials from './propagate-potentials'
 import { filterCliquePotentialsByNodeCombinations, filterCliquesByNodeCombinations, getCliqueWithLessNodes, getNodesFromNetwork, getNodeStates, mapPotentialsThen, normalizeCliquePotentials, propIsNotNil } from '../../utils'
 import { clone, propEq, sum } from 'ramda'
 import { getConnectedComponents } from '../../utils/connected-components'
+import roundTo = require('round-to')
 
 export class HuginInferenceEngine implements IInferenceEngine {
   private _network: INetwork;
@@ -17,7 +18,7 @@ export class HuginInferenceEngine implements IInferenceEngine {
   private _connectedComponents: string[][];
 
   constructor (network: INetwork) {
-    this._network = network
+    this._network = clone(network)
     this._evidence = {}
     const { cliques, sepSets, junctionTree } = createCliques(network)
     this._connectedComponents = getConnectedComponents(junctionTree)
@@ -60,8 +61,8 @@ export class HuginInferenceEngine implements IInferenceEngine {
 
   setDistribution = (name: string, cpt: ICptWithParents | ICptWithoutParents) => {
     const node: INode = this._network[name]
-    const expectedLevels = node.states.sort()
-    const expectedParents = node.parents.sort()
+    const expectedLevels = node.states
+    const expectedParents = node.parents
 
     const err = (reason: string) => {
       throw new Error(`Cannot set the distribution for ${name}.  ${reason}.`)
@@ -70,21 +71,23 @@ export class HuginInferenceEngine implements IInferenceEngine {
 
     const observedLevels = Array.isArray(cpt)
       ? cpt.length > 0
-        ? Object.keys(cpt[0].when).sort()
+        ? Object.keys(cpt[0].then)
         : []
       : Object.keys(cpt).sort()
 
     const observedParents = Array.isArray(cpt)
       ? cpt.length > 0
-        ? Object.keys(cpt[0].then).sort()
+        ? Object.keys(cpt[0].when)
         : []
       : []
 
-    if (observedLevels !== expectedLevels) err('The provided distribution did not have the expected levels.')
-    if (observedParents !== expectedParents) err('The provided distribution did not have the expected parents.')
+    const hasCorrectLevels: boolean = observedLevels.every(x => expectedLevels.includes(x)) && expectedLevels.every(x => observedLevels.includes(x))
+    const hasCorrectParents: boolean = observedParents.every(x => expectedParents.includes(x)) && observedParents.every(x => expectedParents.includes(x))
+    if (!hasCorrectLevels) err('The provided distribution did not have the expected levels')
+    if (!hasCorrectParents) err('The provided distribution did not have the expected parents')
 
     this.resetCache()
-    node.cpt = clone(cpt)
+    this._network[name].cpt = clone(cpt)
   }
 
   private getCliquesPotentials: () => ICliquePotentials = () => {
@@ -142,7 +145,7 @@ export class HuginInferenceEngine implements IInferenceEngine {
     return sum(thens)
   }
 
-  inferAll = () => {
+  inferAll = (options?: IInferAllOptions) => {
     const given = this._evidence
     const network = this._network
     if (Object.keys(this._marginals).length === 0) {
@@ -159,6 +162,17 @@ export class HuginInferenceEngine implements IInferenceEngine {
         this._marginals[node.id] = marginal
       }
     }
-    return this._marginals
+    if (options && options.precision != null && options.precision > 0) {
+      const marginals = clone(this._marginals)
+      for (const nodeId of Object.keys(marginals)) {
+        const marginal = marginals[nodeId]
+        for (const k of Object.keys(marginal)) {
+          marginal[k] = roundTo(marginal[k], options.precision)
+        }
+      }
+      return marginals
+    } else {
+      return this._marginals
+    }
   }
 }

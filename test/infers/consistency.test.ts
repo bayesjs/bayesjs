@@ -7,6 +7,7 @@ import createCliques from '../../src/inferences/junctionTree/create-cliques'
 import getCliquesPotentials from '../../src/inferences/junctionTree/get-cliques-potentials'
 import { findSepSetWithCliques, marginalizePotentials } from '../../src/inferences/junctionTree/propagate-potentials'
 import { ICliquePotentialItem } from '../../src'
+import { getConnectedComponents } from '../../src/utils/connected-components'
 
 /** After message passing between the potentials in the junciton tree, each clique potential for any
  * two adjacent cliques must be consistent.   Specifically, when they are marginalized over the
@@ -21,8 +22,9 @@ import { ICliquePotentialItem } from '../../src'
 // process the network to construct junction tree, cliques and their potentials
 const network = createNetwork(...allNodes)
 const { cliques, sepSets, junctionTree } = createCliques(network)
+const roots = getConnectedComponents(junctionTree).map(x => x[0])
 
-const cliquesPotentials = getCliquesPotentials(cliques, network, junctionTree, sepSets, {})
+const cliquesPotentials = getCliquesPotentials(cliques, network, junctionTree, sepSets, {}, roots)
 
 // construct the list of pairs in the junction tree by traversal of nodes in depth first
 // topological sorting order rooted on the first clique, returning a list of string pairs

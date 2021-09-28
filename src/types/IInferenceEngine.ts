@@ -1,4 +1,4 @@
-import { INetworkResult, ICombinations, ICptWithParents, ICptWithoutParents } from '.'
+import { INetworkResult, ICombinations, ICptWithParents, ICptWithoutParents, IInferAllOptions } from '.'
 
 export interface IInferenceEngine {
 
@@ -21,6 +21,6 @@ export interface IInferenceEngine {
   removeAllEvidence: () => void;
 
   infer: (event: ICombinations) => number;
-  inferAll: () => INetworkResult;
+  inferAll: (options?: IInferAllOptions) => INetworkResult;
 
 }
