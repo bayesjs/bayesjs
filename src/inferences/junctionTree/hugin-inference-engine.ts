@@ -128,9 +128,6 @@ export class HuginInferenceEngine implements IInferenceEngine {
     return this._potentials
   }
 
-  cliques = () => this._cliques;
-  sepSets = () => this._sepSets;
-
   hasEvidenceFor = (name: string) => this._evidence[name] != null;
 
   setEvidence = (evidence: { [name: string]: string }) => {
