@@ -7,18 +7,36 @@ import { clone, propEq, sum } from 'ramda'
 import { getConnectedComponents } from '../../utils/connected-components'
 import roundTo = require('round-to')
 
+// This class implements the IInferenceEngine interface using the
+// Hugin algorithm for propagation of evidence.   It internally
+// caches the junction tree structure, clique potentials and
+// marginal distributions to speed up repeated queries with the
+// same evidence.
 export class HuginInferenceEngine implements IInferenceEngine {
+  // internal caches of bayes net structure.  Note: The topology
+  // of the Bayes network should not be able to be modified by
+  // any action once the engine has been instanciated.
   private _network: INetwork;
-  private _evidence: ICombinations;
-  private _potentials: ICliquePotentials = {}
+  private _connectedComponents: string[][];
   private _cliques: IClique[];
   private _sepSets: ISepSet[];
   private _junctionTree: IGraph;
-  private _marginals: INetworkResult = {}
-  private _connectedComponents: string[][];
 
+  // Caches of potentials and marginals.  These must be reset any
+  // time that there are changes to the evidence, or CPT for the
+  // network's variables.
+  private _potentials: ICliquePotentials = {}
+  private _marginals: INetworkResult = {}
+
+  // Internal store of the current evidence for the engine.
+  // This can only be mutated by the provided functions.
+  private _evidence: ICombinations;
+
+  // The constructor instanciates all the internally cached information
+  // about the bayes network structure and initiallzes the evidence to
+  // void.
   constructor (network: INetwork) {
-    this._network = clone(network)
+    this._network = clone(network) // note that cloning here is required to prevent external mutation of the network.
     this._evidence = {}
     const { cliques, sepSets, junctionTree } = createCliques(network)
     this._connectedComponents = getConnectedComponents(junctionTree)
@@ -27,11 +45,13 @@ export class HuginInferenceEngine implements IInferenceEngine {
     this._junctionTree = junctionTree
   }
 
+  // A helper method for resetting the cached potentials and marginals.
   private resetCache = () => {
     this._potentials = {}
     this._marginals = {}
   }
 
+  // Implementation of various member functions
   hasVariable = (name: string) => this._network[name] != null;
   getVariables = () => Object.keys(this._network);
 
@@ -57,13 +77,18 @@ export class HuginInferenceEngine implements IInferenceEngine {
     return [...this._network[name].parents]
   }
 
+  // NOTE: in order to prevent external mutation of the CPT, the
+  // result is cloned prior to returning it.
   getDistribution = (name: string) => clone(this._network[name].cpt)
 
+  // NOTE: in order to prevent external mutation of the CPT, the
+  // input is cloned prior to assigining to the internally cached value.
   setDistribution = (name: string, cpt: ICptWithParents | ICptWithoutParents) => {
     const node: INode = this._network[name]
     const expectedLevels = node.states
     const expectedParents = node.parents
 
+    // Perform some sanity checks.
     const err = (reason: string) => {
       throw new Error(`Cannot set the distribution for ${name}.  ${reason}.`)
     }
@@ -86,10 +111,14 @@ export class HuginInferenceEngine implements IInferenceEngine {
     if (!hasCorrectLevels) err('The provided distribution did not have the expected levels')
     if (!hasCorrectParents) err('The provided distribution did not have the expected parents')
 
+    // Passed the sanity checks.   reset the cache and set the (cloned) value.
     this.resetCache()
     this._network[name].cpt = clone(cpt)
   }
 
+  // Get the clique potentials.   If the internal cache is not empty, then
+  // return the cached values, otherwise, compute them with the current
+  // evidence
   private getCliquesPotentials: () => ICliquePotentials = () => {
     if (Object.keys(this._potentials).length === 0) {
       const initialPotentials = createInitialPotentials(this._cliques, this._network, this._evidence)
@@ -149,6 +178,8 @@ export class HuginInferenceEngine implements IInferenceEngine {
     const given = this._evidence
     const network = this._network
     if (Object.keys(this._marginals).length === 0) {
+      // There are no previously computed marginals for the current
+      // evidence.   Compute and cache them.
       for (const node of getNodesFromNetwork(network)) {
         const marginal: INodeResult = {}
         const nodeId = node.id
@@ -162,6 +193,8 @@ export class HuginInferenceEngine implements IInferenceEngine {
         this._marginals[node.id] = marginal
       }
     }
+    // If a precision option has been provided, then format the
+    // result to the desired precision
     if (options && options.precision != null && options.precision > 0) {
       const marginals = clone(this._marginals)
       for (const nodeId of Object.keys(marginals)) {
@@ -172,7 +205,10 @@ export class HuginInferenceEngine implements IInferenceEngine {
       }
       return marginals
     } else {
-      return this._marginals
+      // If the precision has not been provided, then return a clone
+      // of the cached marginals.   Cloning ensures that the cached
+      // marginals cannot be mutated externally.
+      return clone(this._marginals)
     }
   }
 }
