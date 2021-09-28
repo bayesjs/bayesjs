@@ -22,21 +22,20 @@ Currently there are three inferences algorithms:
 #### infer(network: [INetwork](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetwork.ts), nodes?: [ICombinations](https://github.com/fhelwanger/bayesjs/blob/master/src/types/ICombinations.ts), given?: [ICombinations](https://github.com/fhelwanger/bayesjs/blob/master/src/types/ICombinations.ts)): number
 Calculate the probability of a node's state.
 
-This function receives a network, a node's state, and the knowing states and will return the probability of the node's state give.
+This function receives a network, and will return the probability of the node having the given state subject to the given evidence.
 
 As mentioned above, there are three inferences engines, by default the junction tree algorithm is used to execute the infer function.
 
-It's important to remember that junction tree uses WeakMap to cache some internal results, if you are mutating the `network` or `given` object is advisable to shallow clone both objects before infer.
-Read more about JT cache [here](#force)
-
+If you want to perform repeated inferences from the same bayes network, you should consider instanciating an inference engine for
+that network.
 ```js
 import { infer, inferences } from 'bayesjs';
 
-infer(network, nodes, give); // Junction tree algorithm
+infer(network, event, evidence); // Junction tree algorithm
 
-inferences.enumeration.infer(network, nodes, give);
-inferences.variableElimination.infer(network, nodes, give);
-inferences.junctionTree.infer(network, nodes, give);
+inferences.enumeration.infer(network, event, evidence);
+inferences.variableElimination.infer(network, event, evidence);
+inferences.junctionTree.infer(network, event, evidence);
 ```
 
 ##### Example
@@ -55,23 +54,11 @@ infer(network, { 'RAIN': 'T' }, { 'SPRINKLER': 'F' }).toFixed(4) // 0.2920
 ```
 
 #### inferAll(network: [INetwork](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetwork.ts), given?: [ICombinations](https://github.com/fhelwanger/bayesjs/blob/master/src/types/ICombinations.ts), options?: [IInferAllOptions](https://github.com/fhelwanger/bayesjs/blob/master/src/types/IInferAllOptions.ts)): [INetworkResult](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetworkResult.ts))
-Calculate all probabilities from a network by receiving the network, knowing states, and options.
-It returns an object with all results.
+Calculate the marginal distributions for a given network subject to some given evidence.
 
 This method will execute the junction tree algorithm on each node's state.
 
 ##### Options
-
-##### force
-
-default: `false`
-
-Enforces to clear junction tree cache before inferring all network.
-The junction tree uses [WeakMap](https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) to store the `cliques` and `potentials` that are used at the algorithm.
-- `cliques` weak stored by `network`
-- `potentials` weak stored by `cliques` and `given`
-
-This option is only necessary if you are mutation your `network` or `given` object instead of creating a new object before inferring each time.
 
 ##### precision
 
@@ -136,9 +123,9 @@ const network = {
   },
 };
 
-const given = { 'Node 1': 'True' }
+const evidence = { 'Node 1': 'True' }
 
-inferAll(network, given)
+inferAll(network, evidence)
 // {
 //   'Node 1': { True: 1, False: 0 },
 //   'Node 2': { True: 0.5, False: 0.5 },
@@ -148,20 +135,57 @@ inferAll(network, given)
 // Mutating the network...
 network["Node 3"].cpt[0].then = { True: 0.95, False: 0.05 };
 
-inferAll(network, given);
-// Cached result - wrong
-// {
-//   'Node 1': { True: 1, False: 0 },
-//   'Node 2': { True: 0.5, False: 0.5 },
-//   'Node 3': { True: 0.5, False: 0.5 },
-// }
-
-inferAll(network, given, { force: true });
+inferAll(network, evidence);
 // {
 //   'Node 1': { True: 1, False: 0 },
 //   'Node 2': { True: 0.5, False: 0.5 },
 //   'Node 3': { True: 0.725, False: 0.275 }
 // }
+```
+
+#### [IInferenceEngines](https://github.com/fhelwanger/bayesjs/blob/master/src/types/IInferenceEngine.ts))
+Inference engines provide an efficient way of performing repeated inferences on the same Bayesian network.  Currently there
+is one inference engine provided:
+
+* [HuginInferenceEngine](https://github.com/dlewissandy/bayesjs/blob/feature/inference-engines/src/inferences/junctionTree/hugin-inference-engine.ts)) - An inference engine that uses the junction tree algorithm for infereneces, caching the network topology and potentials for efficiency.
+
+Each engine can be ititialized by calling the constructor with the desired network.  The example below
+shows how to perform efficient repeated inference on the Alarm bayes network.:
+```js
+import { HuginInferenceEngine } from 'bayesjs'
+import { allNodes } from './models/alarm.ts'
+
+const network = createNetwork(...allNodes )
+const engine = HuginInferenceEngine( network )
+
+// Make multiple inferences with the network without inferences
+console.log( engine.infer({ 'JOHN_CALLS': 'T' })) // 0.0521
+console.log( engine.infer({ 'MARY_CALLS': 'T' })) // 0.0117
+console.log( engine.getEvidence ) // { }
+
+// inject some evidence and make multiple inferences
+engine.setEvidence({ 'EARTHQUAKE': 'T' } )
+console.log( engine.infer({ 'JOHN_CALLS': 'T' })) // 0.2971
+console.log( engine.infer({ 'MARY_CALLS': 'T' })) // 0.2106
+console.log( engine.getEvidence ) // { 'EARTHQUAKE': 'T' }
+
+// Update the distribution for a node and make some inferences
+engine.setDistribution('BURGLARY', { T: 0.05, F: 0.95 })
+console.log( engine.infer({ 'JOHN_CALLS': 'T' })) // 0.3246
+console.log( engine.infer({ 'MARY_CALLS': 'T' })) // 0.2329
+console.log( engine.getEvidence ) // { 'EARTHQUAKE': 'T' }
+
+// incrementally add additional evidence and make multiple inferences
+engine.setEvidence({ 'ALARM': 'T' } )
+console.log( engine.infer({ 'JOHN_CALLS': 'T' })) // 0.9000
+console.log( engine.infer({ 'MARY_CALLS': 'T' })) // 0.7000
+console.log( engine.getEvidence ) // { 'ALARM': 'T', 'EARTHQUAKE': 'T' }
+
+// Remove all the evidence and make multiple inferences.
+engine.removeAllEvidence()
+console.log( engine.infer({ 'JOHN_CALLS': 'T' })) // 0.0912
+console.log( engine.infer({ 'MARY_CALLS': 'T' })) // 0.0435
+console.log( engine.getEvidence ) // { }
 ```
 
 #### addNode(network: [INetwork](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetwork.ts), node: [INode](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INode.ts)): [INetwork](https://github.com/fhelwanger/bayesjs/blob/master/src/types/INetwork.ts)
