@@ -4,7 +4,7 @@ import { IInferenceEngine } from '../../src/types'
 
 import { allNodes } from '../../models/huge-network'
 import { createNetwork } from '../../src/utils'
-import { HuginInferenceEngine } from '../../src/inferences/junctionTree/hugin-inference-engine'
+import { InferenceEngine } from '../../src/index'
 
 const infersGiveNoEvidence = (engine: IInferenceEngine) => {
   const { infer } = engine
@@ -606,7 +606,7 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
 describe('infers', () => {
   describe('hugeNetwork', () => {
     const network = createNetwork(...allNodes)
-    const engine = new HuginInferenceEngine(network)
+    const engine = new InferenceEngine(network)
     const testNames = Object.keys(tests)
 
     for (const testName of testNames) {

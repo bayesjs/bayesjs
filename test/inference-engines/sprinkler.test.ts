@@ -3,7 +3,7 @@ import * as expect from 'expect'
 import { IInferenceEngine } from '../../src/types'
 import { allNodes } from '../../models/rain-sprinkler-grasswet'
 import { createNetwork } from '../../src/utils'
-import { HuginInferenceEngine } from '../../src/inferences/junctionTree/hugin-inference-engine'
+import { InferenceEngine } from '../../src/index'
 
 const infersGiveSprinklerTrue = (engine: IInferenceEngine) => {
   const { infer } = engine
@@ -78,7 +78,7 @@ describe('infers', () => {
   describe('sprinkler network', () => {
     const testNames = Object.keys(tests)
     const network = createNetwork(...allNodes)
-    const engine = new HuginInferenceEngine(network)
+    const engine = new InferenceEngine(network)
 
     for (const testName of testNames) {
       const method = tests[testName]

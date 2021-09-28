@@ -3,10 +3,10 @@ import * as expect from 'expect'
 import { IInferenceEngine } from '../../src/types'
 import { allNodes } from '../../models/rain-sprinkler-grasswet'
 import { createNetwork } from '../../src/utils'
-import { HuginInferenceEngine } from '../../src/inferences/junctionTree/hugin-inference-engine'
+import { InferenceEngine } from '../../src/index'
 
 const network = createNetwork(...allNodes)
-const engine = new HuginInferenceEngine(network)
+const engine = new InferenceEngine(network)
 
 const infersSingleNode = (engine: IInferenceEngine) => {
   const { infer } = engine

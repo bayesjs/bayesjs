@@ -14,3 +14,4 @@ export * from './builder'
 export const { infer } = junctionTree
 export * from './types'
 export * from './utils/inferAll'
+export { HuginInferenceEngine as InferenceEngine } from './inferences/junctionTree/hugin-inference-engine'

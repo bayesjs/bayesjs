@@ -147,16 +147,16 @@ inferAll(network, evidence);
 Inference engines provide an efficient way of performing repeated inferences on the same Bayesian network.  Currently there
 is one inference engine provided:
 
-* [HuginInferenceEngine](https://github.com/dlewissandy/bayesjs/blob/feature/inference-engines/src/inferences/junctionTree/hugin-inference-engine.ts)) - An inference engine that uses the junction tree algorithm for infereneces, caching the network topology and potentials for efficiency.
+* [InferenceEngine](https://github.com/dlewissandy/bayesjs/blob/feature/inference-engines/src/inferences/junctionTree/hugin-inference-engine.ts)) - An inference engine that uses the junction tree algorithm for infereneces, caching the network topology and potentials for efficiency.
 
 Each engine can be ititialized by calling the constructor with the desired network.  The example below
 shows how to perform efficient repeated inference on the Alarm bayes network.:
 ```js
-import { HuginInferenceEngine } from 'bayesjs'
+import { InferenceEngine } from 'bayesjs'
 import { allNodes } from './models/alarm.ts'
 
 const network = createNetwork(...allNodes )
-const engine = HuginInferenceEngine( network )
+const engine = InferenceEngine( network )
 
 // Make multiple inferences with the network without inferences
 console.log( engine.infer({ 'JOHN_CALLS': 'T' })) // 0.0521
