@@ -208,4 +208,16 @@ export class HuginInferenceEngine implements IInferenceEngine {
       return clone(this._marginals)
     }
   }
+
+  toJSON = () => clone({
+    _class: 'HuginInferenceEngine',
+    _cliques: this._cliques,
+    _connectedComponents: this._connectedComponents,
+    _evidence: this._evidence,
+    _junctionTree: this._junctionTree,
+    _marginals: this._marginals,
+    _network: this._network,
+    _potentials: this._potentials,
+    _sepSets: this._sepSets,
+  })
 }
