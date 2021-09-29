@@ -3,7 +3,7 @@ import * as expect from 'expect'
 import { allNodes } from '../../models/alarm'
 import { createNetwork } from '../../src/utils'
 import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
-import { HuginInferenceEngine } from '../../src/inferences/junctionTree/hugin-inference-engine'
+import { HuginInferenceEngine } from '../../src/engines/hugin-inference-engine'
 
 const network = createNetwork(...allNodes)
 const hugeNetwork = createNetwork(...hugeNetworkAllNodes)

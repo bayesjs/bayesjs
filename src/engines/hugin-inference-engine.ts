@@ -1,10 +1,10 @@
-import { IInferenceEngine, ISepSet, INode, INetworkResult, IInferAllOptions, ICptWithParents, ICptWithoutParents, INetwork, ICombinations, ICliquePotentials, IClique, IGraph, INodeResult } from '../../types'
-import createCliques from './create-cliques'
-import createInitialPotentials from './create-initial-potentials'
-import propagatePotentials from './propagate-potentials'
-import { filterCliquePotentialsByNodeCombinations, filterCliquesByNodeCombinations, getCliqueWithLessNodes, getNodesFromNetwork, getNodeStates, mapPotentialsThen, normalizeCliquePotentials, propIsNotNil } from '../../utils'
+import { IInferenceEngine, ISepSet, INode, INetworkResult, IInferAllOptions, ICptWithParents, ICptWithoutParents, INetwork, ICombinations, ICliquePotentials, IClique, IGraph, INodeResult } from '../types'
+import createCliques from '../inferences/junctionTree/create-cliques'
+import createInitialPotentials from '../inferences/junctionTree/create-initial-potentials'
+import propagatePotentials from '../inferences/junctionTree/propagate-potentials'
+import { filterCliquePotentialsByNodeCombinations, filterCliquesByNodeCombinations, getCliqueWithLessNodes, getNodesFromNetwork, getNodeStates, mapPotentialsThen, normalizeCliquePotentials, propIsNotNil } from '../utils'
 import { clone, propEq, sum } from 'ramda'
-import { getConnectedComponents } from '../../utils/connected-components'
+import { getConnectedComponents } from '../utils/connected-components'
 import roundTo = require('round-to')
 
 // This class implements the IInferenceEngine interface using the

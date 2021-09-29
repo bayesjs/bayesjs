@@ -4,7 +4,7 @@ import {
   INetwork,
 } from '../../types'
 
-import { HuginInferenceEngine } from './hugin-inference-engine'
+import { HuginInferenceEngine } from '../../engines/hugin-inference-engine'
 
 export const infer: IInfer = (network: INetwork, nodes: ICombinations, given: ICombinations = {}): number => {
   const engine = new HuginInferenceEngine(network)
