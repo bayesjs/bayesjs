@@ -1,3 +1,21 @@
+### [0.6.5](https://github.com/bayesjs/bayesjs/compare/v0.6.4...v0.6.5) (2021-09-29)
+
+
+### :memo: Documentation
+
+* **travis-ci:** update travis ci badge ([53eafb2](https://github.com/bayesjs/bayesjs/commit/53eafb2911c0edfee20fef9067f4c71534b24b3b))
+
+
+### :bug: Fixes
+
+* **graph:** trivial edit to cause build to restart ([6741e13](https://github.com/bayesjs/bayesjs/commit/6741e1354b020167c35016f20d238b28e9c8f496))
+* **infer:** fix inference over junction forests ([f164c8d](https://github.com/bayesjs/bayesjs/commit/f164c8d86f6c835ce77e9cf7a9db4d8824837835))
+
+
+### :recycle: Refactors
+
+* **potentials:** replace for loop with reduce ([a8cebf3](https://github.com/bayesjs/bayesjs/commit/a8cebf31afda1e0e3c0a776b953b9237cdc26e1e))
+
 ### [0.6.4](https://github.com/bayesjs/bayesjs/compare/v0.6.3...v0.6.4) (2021-09-22)
 
 
