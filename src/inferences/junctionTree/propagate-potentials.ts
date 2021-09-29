@@ -16,7 +16,6 @@ import {
   divide,
   equals,
   find,
-  head,
   keys,
   map,
   multiply,
@@ -31,6 +30,7 @@ import {
   buildCombinations,
   objectEqualsByFirstObjectKeys,
 } from '../../utils'
+import { getConnectedComponents } from '../../utils/connected-components'
 
 interface ICollectEvidenceOrder {
   id: string;
@@ -127,11 +127,6 @@ const absorbMessage = (potentials: ICliquePotentialItem[], messagePotentials: IC
   )
 }
 
-/** * Collect the evidence a the first element in the list of cliques.   Efficiency of the
- * evidence collection assumes that the cliques are in topological sorted order.
- */
-const bestCliqueRoot: (cliques: IClique[]) => IClique = head
-
 const passMessage = (network: INetwork, sepSets: ISepSet[], cliquesPotentials: ICliquePotentials, separatorPotentials: ICliquePotentialMessages, src: string, trg: string) => {
   const i = (src < trg) ? src : trg
   const j = (src < trg) ? trg : src
@@ -186,12 +181,19 @@ const distributeCliquesEvidence = (network: INetwork, junctionTree: IGraph, sepS
 export default (network: INetwork, junctionTree: IGraph, cliques: IClique[], sepSets: ISepSet[], cliquesPotentials: ICliquePotentials): ICliquePotentials => {
   // Create a store for the messages passed between cliques.   Initially this store is empty because no messages have been passed.
   const messages: ICliquePotentialMessages = createMessagesByCliques(cliques)
-  const rootId: string = bestCliqueRoot(cliques).id
+  const ccs: string[][] = getConnectedComponents(junctionTree)
 
-  // Update the potentials starting at the leaf nodes and moving to the roots
-  const collectedCliquesPotentials = collectCliquesEvidence(network, junctionTree, sepSets, messages, cliquesPotentials, rootId)
-  // Update the potentials starting at the root node and moving toward the leaves
-  const distributedCliquesPotentials = distributeCliquesEvidence(network, junctionTree, sepSets, messages, collectedCliquesPotentials, rootId)
-
-  return distributedCliquesPotentials
+  // Make each connected component of the factor graph consistent.    This is not strictly necessary for a well formed Bayes net
+  // which should have single connected component, however during incremental construction or structural learning, networks which
+  // are forests, rather than trees may occur.
+  return reduce(
+    (potentials, [rootId]) => {
+      // Update the potentials starting at the leaf nodes and moving to the roots
+      const collectedCliquesPotentials = collectCliquesEvidence(network, junctionTree, sepSets, messages, potentials, rootId)
+      // Update the potentials starting at the root node and moving toward the leaves
+      return distributeCliquesEvidence(network, junctionTree, sepSets, messages, collectedCliquesPotentials, rootId)
+    },
+    cliquesPotentials,
+    ccs,
+  )
 }
