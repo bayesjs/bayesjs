@@ -182,17 +182,18 @@ export default (network: INetwork, junctionTree: IGraph, cliques: IClique[], sep
   // Create a store for the messages passed between cliques.   Initially this store is empty because no messages have been passed.
   const messages: ICliquePotentialMessages = createMessagesByCliques(cliques)
   const ccs: string[][] = getConnectedComponents(junctionTree)
-  let potentials = cliquesPotentials
 
   // Make each connected component of the factor graph consistent.    This is not strictly necessary for a well formed Bayes net
   // which should have single connected component, however during incremental construction or structural learning, networks which
   // are forests, rather than trees may occur.
-  for (const [rootId] of ccs) {
-    // Update the potentials starting at the leaf nodes and moving to the roots
-    const collectedCliquesPotentials = collectCliquesEvidence(network, junctionTree, sepSets, messages, potentials, rootId)
-    // Update the potentials starting at the root node and moving toward the leaves
-    potentials = distributeCliquesEvidence(network, junctionTree, sepSets, messages, collectedCliquesPotentials, rootId)
-  }
-
-  return potentials
+  return reduce(
+    (potentials, [rootId]) => {
+      // Update the potentials starting at the leaf nodes and moving to the roots
+      const collectedCliquesPotentials = collectCliquesEvidence(network, junctionTree, sepSets, messages, potentials, rootId)
+      // Update the potentials starting at the root node and moving toward the leaves
+      return distributeCliquesEvidence(network, junctionTree, sepSets, messages, collectedCliquesPotentials, rootId)
+    },
+    cliquesPotentials,
+    ccs,
+  )
 }
