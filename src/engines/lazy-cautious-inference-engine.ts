@@ -1,236 +1,387 @@
-import { IInferenceEngine, ISepSet, INode, INetworkResult, IInferAllOptions, ICptWithParents, ICptWithoutParents, INetwork, ICombinations, ICliquePotentials, IClique, IGraph, INodeResult } from '../../types'
+import {
+  INetwork,
+  IInferenceEngine, ICptWithParents, ICptWithoutParents, IInferAllOptions,
+} from '../types'
+import { createICliqueFactors } from '../inferences/junctionTree/create-initial-potentials'
+
 import createCliques from '../inferences/junctionTree/create-cliques'
-import createInitialPotentials from '../inferences/junctionTree/create-initial-potentials'
-import propagatePotentials from '../inferences/junctionTree/propagate-potentials'
-import { filterCliquePotentialsByNodeCombinations, filterCliquesByNodeCombinations, getCliqueWithLessNodes, getNodesFromNetwork, getNodeStates, mapPotentialsThen, normalizeCliquePotentials, propIsNotNil } from '../../utils'
-import { clone, propEq, sum } from 'ramda'
 import { getConnectedComponents } from '../utils/connected-components'
-import roundTo = require('round-to')
+import { cptToFastPotential, FastPotential, fastPotentialToCPT } from './FastPotential'
+import { FastClique } from './FastClique'
+import { FastNode } from './FastNode'
+import { NodeId, CliqueId, ConnectedComponentId, FormulaId } from './common'
+import { Formula, NodePotential, FormulaType, reference, mult, EvidenceFunction, updateReferences, marginalize } from './Formula'
+import { messageName, propagatePotentials } from './symbolic-propagation'
+import { evaluate } from './evaluation'
 
-class EvidenceFunction {
-  private _name: string
-  private _value: string
+const getNetworkInfo = (network: INetwork) => {
+  const { cliques, sepSets, junctionTree } = createCliques(network)
 
-  constructor (network: INetwork, name: string, level: string) {
-    const err = (reason: string) => { throw new Error(`Cannot construct evidence function.  ${reason}.`) }
+  const factorMap = createICliqueFactors(cliques, network)
+  const ccs = getConnectedComponents(junctionTree)
 
-    const node: INode | null = network[name]
-    if (node == null) err(`Bayes network does not have node ${name}`)
+  const numberOfConnectedComponents = ccs.length
+  const numberOfMessages = 2 * (cliques.length - numberOfConnectedComponents)
+  const numberOfCliques = cliques.length
+  const numberOfNodes = Object.keys(network).length
+  const numberOfFormulas = numberOfNodes + numberOfCliques * 4 + numberOfMessages
+  const cliqueOffset = numberOfNodes
+  const messageOffset = cliqueOffset + numberOfCliques * 4
 
-    if (!node.states.includes[level]) err(`Variable ${name} does not have the levels: ${level}`)
+  const nodeMap: { [nodename: string]: number } = {}
+  Object.keys(network).forEach((k, i) => { nodeMap[k] = i })
+  const cliqueMap: { [cliquename: string]: number} = {}
+  Object.values(cliques).forEach((k, i) => { cliqueMap[k.id] = i })
 
-    this._value = level
-    this._name = name
+  const connectedComponents = ccs.map(cc => cc.map(cliqueName => cliqueMap[cliqueName]))
+  const roots: CliqueId[] = connectedComponents.map(xs => xs[0])
+
+  const ccMap: { [cliqueId: string]: ConnectedComponentId} = {}
+  ccs.forEach((cc, i) => {
+    cc.forEach(cliqueId => {
+      ccMap[cliqueId.toString()] = i
+    })
+  })
+
+  const sepSetMap: { [cliqueId: string]: { [cliqueId: string]: number }} = {}
+  const separators: number[][] = []
+  const separatorNameToId: { [name: string]: number} = {}
+  sepSets.forEach(({ ca, cb, sharedNodes }) => {
+    const a = ca
+    const b = cb
+    if (!sepSetMap[a.toString()]) sepSetMap[a.toString()] = {}
+    if (!sepSetMap[b.toString()]) sepSetMap[b.toString()] = {}
+    const members: NodeId[] = sharedNodes.map((nodename: string) => nodeMap[nodename])
+    const name = members.sort().toString()
+    if (!separatorNameToId[name]) {
+      separatorNameToId[name] = separators.length
+      separators.push(members)
+    }
+    const idx = separatorNameToId[name]
+    sepSetMap[a.toString()][b.toString()] = idx
+    sepSetMap[b.toString()][a.toString()] = idx
+  })
+
+  return {
+    cliques,
+    separators,
+    junctionTree,
+    connectedComponents,
+    factorMap,
+    cliqueMap,
+    nodeMap,
+    sepSetMap,
+    ccMap,
+    numberOfCliques,
+    numberOfConnectedComponents,
+    numberOfFormulas,
+    numberOfNodes,
+    numberOfMessages,
+    cliqueOffset,
+    messageOffset,
+    roots,
   }
 }
 
-// This class implements the IInferenceEngine interface using the
-// lazy cautious algorithm for propagation of evidence described in
-// https://arxiv.org/pdf/1301.7398.pdf.   It internally
-// caches the junction tree structure, clique and potentials,
-// evidence and finding functions, and marginal distributions to
-// speed up repeated queries with the same evidence.
-// Furthermore it uses the d-connectedness of cliques to identify barren
-// variables to further speed up propagation.
-export class LazyInferenceEngine implements IInferenceEngine {
-  // internal caches of bayes net structure.  Note: The topology
-  // of the Bayes network should not be able to be modified by
-  // any action once the engine has been instanciated.
-  private _network: INetwork;
-  private _connectedComponents: string[][];
-  private _cliques: IClique[];
-  private _sepSets: ISepSet[];
-  private _junctionTree: IGraph;
+export class LazyPropagationEngine implements IInferenceEngine {
+  private _cliques: FastClique[]
+  private _nodes: FastNode[]
+  private _potentials: (FastPotential | null)[]
+  private _formulas: Formula[]
+  private _connectdComponents: NodeId[][]
+  private _separators: NodeId[][]
+  private _separatorPotentials: FormulaId[] =[]
 
-  // Caches of potentials and marginals.  These must be reset any
-  // time that there are changes to the evidence, or CPT for the
-  // network's variables.
-  private _potentials: { [source: string]: {
-    factors: ICliquePotentials;
-    evidence: EvidenceFunction[];
-  };} = {};
+  private clearCachedValues = (root: FormulaId) => {
+    const f = this._formulas[root]
+    const p = this._potentials[root]
+    if (!p) return
+    this._potentials[root] = null
+    f.refrerencedBy.forEach(childId => this.clearCachedValues(childId))
+  }
 
-  private _separatorPotentials: { [source: string]: ICliquePotentials };
-  private _marginals: INetworkResult = {};
-
-  // Internal store of the current evidence for the engine.
-  // This can only be mutated by the provided functions.
-  private _evidence: ICombinations = {}
-
-  // The constructor instanciates all the internally cached information
-  // about the bayes network structure and initiallzes the evidence to
-  // void.
   constructor (network: INetwork) {
-    this._network = clone(network) // note that cloning here is required to prevent external mutation of the network.
-    this._evidence = {}
-    const { cliques, sepSets, junctionTree } = createCliques(network)
-    this._connectedComponents = getConnectedComponents(junctionTree)
-    this._cliques = cliques
-    this._sepSets = sepSets
-    this._junctionTree = junctionTree
+    const info = getNetworkInfo(network)
+    const { cliques, junctionTree, connectedComponents, separators } = info
+    const { nodeMap, cliqueMap, factorMap, ccMap, sepSetMap } = info
+    const { numberOfCliques, numberOfNodes } = info
+
+    const fs = Array(2 * numberOfNodes + numberOfCliques)
+    const ns: FastNode[] = Array(numberOfNodes)
+    const cs: FastClique[] = Array(numberOfCliques)
+    const ccs: number[][] = connectedComponents.map(cc => cc.map(cliqueName => cliqueMap[cliqueName]))
+
+    // Initialize the collection of nodes using the fast integer indexing.
+    // note that some of the fields (children, cliques, factorAssignedTo)
+    // cannot be populated on the initial pass.
+    Object.values(network).forEach((node, i) => {
+      const fastnode = {
+        id: i,
+        name: node.id,
+        parents: node.parents.map(parentname => nodeMap[parentname]),
+        children: [],
+        referencedBy: [i],
+        formula: i,
+        posteriorMarginal: 0,
+        evidenceFunction: i + numberOfNodes,
+        cliques: [],
+        factorAssignedTo: 0,
+        levels: node.states,
+      }
+      fs[i] = new NodePotential(fastnode, ns)
+      ns[i] = fastnode
+    })
+
+    // Populate the parents of each node.   This is done in a second pass
+    // to ensure that all the elements of the nodes collection have already
+    // been populated.
+    ns.forEach((node: FastNode, i) => {
+      const { id, parents } = node
+      parents.forEach(parentId => {
+        ns[parentId].children.push(id)
+      })
+
+      fs[i + numberOfNodes] = new EvidenceFunction(node, fs)
+      fs[i + numberOfNodes].id = i + numberOfNodes
+    })
+
+    // Initialize the collection of cliques using the fast integer indexing.
+    cliques.forEach((clique, i) => {
+      const neighs: string[] = junctionTree.getNodeEdges(clique.id)
+      const neighbors: number[] = neighs.map(neighborname => cliqueMap[neighborname])
+      const domain = clique.nodeIds.map(nodename => nodeMap[nodename]).sort()
+      const factors = factorMap[clique.id].map(nodename => nodeMap[nodename] + numberOfNodes)
+      const prior = 2 * numberOfNodes + i
+      const posterior = prior + numberOfCliques
+      const fastclique = {
+        id: i,
+        name: clique.id,
+        factors,
+        domain,
+        neighbors,
+        prior,
+        posterior,
+        messagesReceived: [],
+        belongsTo: ccMap[i.toString()],
+        separators: neighs.map(neigh => sepSetMap[clique.id][neigh]),
+      }
+      // append the clique to the fast cliques collection.
+      cs[i] = fastclique
+
+      // For each node in this clique, append the reverse lookup information
+      // in the corresponding fast node.
+      domain.forEach(nodeId => { ns[nodeId].cliques.push(i) })
+
+      // Populate the prior potentials for the clique.  Make sure that the
+      // reference count for the factor nodes is updated.
+      fs[prior] = mult(factors.map(nodeId => reference(nodeId, fs)))
+      fs[prior].id = prior
+    })
+
+    const messages = propagatePotentials(cs, separators, fs, info.roots)
+
+    // Construct the posterior potentials for each clique using the messages
+    // propagated between each potential.
+
+    cs.forEach(clique => {
+      const msgs = clique.neighbors.map(x => messages[messageName(x, clique.id)])
+      clique.messagesReceived = msgs.map(x => x.id)
+      const posterior = mult([reference(clique.prior, fs), ...msgs])
+      if (posterior.kind !== FormulaType.REFERENCE) {
+        posterior.id = fs.length
+        fs.push(posterior)
+      }
+      clique.posterior = posterior.id
+    })
+
+    // create posterior separator potentials.   These will always be smaller than the clique potentials
+    // and may be useful in rapidly computing posterior marginals of nodes.
+    separators.map((ns, i) => {
+      const cliques = cs.filter(c => c.separators.includes(i))
+      if (cliques.length < 2) throw new Error(`Could not find a pair of cliques connected by separator ${ns}`)
+      const [ca] = cliques
+      const ia: number = ca.separators.findIndex(x => x === i)
+      const cb: FastClique = cs.find(x => x.id === ca.neighbors[ia]) as FastClique
+      const ib: number = cb.neighbors.findIndex(x => x === ca.id)
+      const separatorPotential = mult([fs[ca.messagesReceived[ia]], fs[cb.messagesReceived[ib]]])
+      separatorPotential.id = fs.length
+      fs.push(separatorPotential)
+      this._separatorPotentials.push(separatorPotential.id)
+    })
+
+    // Assign the posterior marignals for each node.  Note that either the node will appear in
+    // eactly one clique, or it will appear in 1 or more separators.   In the case when it
+    // occurs in a separator, the separator potential will usually be a smaller potential,
+    // and may require no additional marginalization.
+    ns.forEach(fastNode => {
+      let baseFormula: Formula = fs[cs[fastNode.cliques[0]].posterior]
+      if (fastNode.cliques.length > 1) {
+        // Find the smallest separator set that contains the node.   Then marginalize that
+        // separator
+
+        this._separatorPotentials.forEach((formId: number) => {
+          const f: Formula = fs[formId]
+          if (f.domain.includes(fastNode.id)) {
+            if (f.size < baseFormula.size) {
+              baseFormula = f
+            }
+          }
+        })
+      } else {
+      }
+      const formula = marginalize([fastNode.id], baseFormula, fs)
+      if (formula.kind !== FormulaType.REFERENCE) {
+        formula.id = fs.length
+        fs.push(formula)
+      }
+      fastNode.posteriorMarginal = formula.id
+    })
+
+    const ps = Array(fs.length)
+    // Convert the cpts for each variable into a potential function
+    // and cache at the same index as the node.
+    ns.forEach((node, i) => {
+      ps[i] = cptToFastPotential(node, network[node.name].cpt, ns)
+      // node.posteriorMarginal = pickMarginal(node.id, cliques, formulas)
+    })
+
+    updateReferences(fs)
+    // Set the values of the priavate properties.
+    this._nodes = ns
+    this._cliques = cs
+    this._formulas = fs
+    this._potentials = ps
+    this._connectdComponents = ccs
+    this._separators = separators
   }
 
-  // A helper method for resetting the cached potentials and marginals.
-  private resetCache = () => {
-    this._potentials = {}
-    this._marginals = {}
-  }
-
-  // Implementation of various member functions
-  hasVariable = (name: string) => this._network[name] != null;
-  getVariables = () => Object.keys(this._network);
-
-  hasLevel = (name: string, level: string) => {
-    if (!this._network[name]) return false
-    const found = this._network[name].states.filter(x => x === level)
-    return found !== []
-  }
-
-  getLevels = (name: string) => {
-    if (!this._network[name]) return []
-    return [...this._network[name].states]
-  }
-
-  hasParent = (name: string, parent: string) => {
-    if (!this._network[name]) return false
-    const found = this._network[name].parents.filter(x => x === parent)
-    return found !== []
-  }
+  hasVariable = (name: string) => this._nodes.map(x => x.name).includes(name)
+  getVariables = () => this._nodes.map(x => x.name)
 
   getParents = (name: string) => {
-    if (!this._network[name]) return []
-    return [...this._network[name].parents]
+    const node = this._nodes.find(x => x.name === name)
+    if (!node) return []
+    return node.parents.map(i => this._nodes[i].name)
   }
 
-  // NOTE: in order to prevent external mutation of the CPT, the
-  // result is cloned prior to returning it.
-  getDistribution = (name: string) => clone(this._network[name].cpt)
+  hasParent = (name: string, parent: string) => this.getParents(name).includes(parent)
 
-  // NOTE: in order to prevent external mutation of the CPT, the
-  // input is cloned prior to assigining to the internally cached value.
-  setDistribution = (name: string, cpt: ICptWithParents | ICptWithoutParents) => {
-    const node: INode = this._network[name]
-    const expectedLevels = node.states
-    const expectedParents = node.parents
+  getLevels = (name: string) => {
+    const node = this._nodes.find(x => x.name === name)
+    if (!node) return []
+    return node.levels
+  }
 
-    // Perform some sanity checks.
-    const err = (reason: string) => {
-      throw new Error(`Cannot set the distribution for ${name}.  ${reason}.`)
+  hasLevel = (name: string, level: string) => this.getLevels(name).includes(level)
+
+  getDistribution = (name: string) => {
+    const node = this._nodes.find(x => x.name === name)
+    if (!node) return []
+    return fastPotentialToCPT(node.id, this._nodes, this._potentials[node.id] || [])
+  }
+
+  setDistribution = (name: string, distribution: ICptWithoutParents | ICptWithParents) => {
+    const node = this._nodes.find(x => x.name === name)
+    if (node) {
+      this.clearCachedValues(node.id)
+      this._potentials[node.id] = cptToFastPotential(node, distribution, this._nodes)
     }
-    if (!node) err('The variable does not exist in the network')
-
-    const observedLevels = Array.isArray(cpt)
-      ? cpt.length > 0
-        ? Object.keys(cpt[0].then)
-        : []
-      : Object.keys(cpt).sort()
-
-    const observedParents = Array.isArray(cpt)
-      ? cpt.length > 0
-        ? Object.keys(cpt[0].when)
-        : []
-      : []
-
-    const hasCorrectLevels: boolean = observedLevels.every(x => expectedLevels.includes(x)) && expectedLevels.every(x => observedLevels.includes(x))
-    const hasCorrectParents: boolean = observedParents.every(x => expectedParents.includes(x)) && observedParents.every(x => expectedParents.includes(x))
-    if (!hasCorrectLevels) err('The provided distribution did not have the expected levels')
-    if (!hasCorrectParents) err('The provided distribution did not have the expected parents')
-
-    // Passed the sanity checks.   reset the cache and set the (cloned) value.
-    this.resetCache()
-    this._network[name].cpt = clone(cpt)
   }
 
-  // Get the clique potentials.   If the internal cache is not empty, then
-  // return the cached values, otherwise, compute them with the current
-  // evidence
-  private getCliquesPotentials: () => ICliquePotentials = () => {
-    if (Object.keys(this._potentials).length === 0) {
-      const initialPotentials = createInitialPotentials(this._cliques, this._network, this._evidence)
-      const propagatedPotentials = propagatePotentials(this._network, this._junctionTree, this._cliques, this._sepSets, initialPotentials, this._connectedComponents.map(x => x[0]))
-      this._potentials = normalizeCliquePotentials(propagatedPotentials)
+  hasEvidenceFor = (name: string) => {
+    const node = this._nodes.find(x => x.name === name)
+    if (!node) {
+      return false
     }
-    return this._potentials
+    return (this._formulas[node.evidenceFunction] as EvidenceFunction).level != null
   }
 
-  hasEvidenceFor = (name: string) => this._evidence[name] != null;
+  getEvidence = (name: string) => {
+    const node = this._nodes.find(x => x.name === name)
+    if (!node) {
+      return false
+    }
+    const lvl = (this._formulas[node.evidenceFunction] as EvidenceFunction).level
+    if (!lvl) return null
+    return node.levels[lvl]
+  }
 
-  setEvidence = (evidence: { [name: string]: string }) => {
+  updateEvidence = (evidence: { [name: string]: string}) => {
+    Object.keys(evidence).forEach(name => {
+      const node = this._nodes.find(x => x.name === name)
+      if (node) {
+        const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
+        const lvlIdx = node.levels.findIndex(x => x === evidence[name])
+        if (lvlIdx >= 0 && lvlIdx !== evidenceFunc.level) {
+          evidenceFunc.level = lvlIdx
+          this.clearCachedValues(evidenceFunc.id)
+        }
+      }
+    })
+  }
+
+  setEvidence = (evidence: { [name: string]: string}) => {
     this.removeAllEvidence()
     this.updateEvidence(evidence)
   }
 
-  updateEvidence = (evidence: { [name: string]: string }) => {
-    for (const [name, value] of Object.entries(evidence)) {
-      const oldValue = this._evidence[name]
-      if (oldValue == null || oldValue !== value) {
-        this.resetCache()
-      }
-      this._evidence[name] = value
-    }
-  }
-
   removeEvidence = (name: string) => {
-    const oldValue = this._evidence[name]
-    if (oldValue != null) {
-      this.resetCache()
-      delete this._evidence[name]
+    const node = this._nodes.find(x => x.name === name)
+    if (node) {
+      const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
+      if (evidenceFunc.level != null) {
+        evidenceFunc.level = null
+        this.clearCachedValues(evidenceFunc.id)
+      }
     }
   }
 
-  removeAllEvidence = () => {
-    if (Object.keys(this._evidence).length > 0) {
-      this.resetCache()
-      this._evidence = {}
-    }
+  removeAllEvidence = () =>
+    this._nodes.forEach(node => {
+      const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
+      if (evidenceFunc.level != null) {
+        evidenceFunc.level = null
+        this.clearCachedValues(evidenceFunc.id)
+      }
+    })
+
+  /** Given a single node,  infer the probability of an event from the
+   * posterior marginal distribution for that node.
+   */
+  private inferFromMarginal (nodeId: NodeId, level: number) {
+    const p = evaluate(this._nodes[nodeId].posteriorMarginal, this._nodes, this._formulas, this._potentials)
+    return p[level]
   }
 
-  infer = (event: ICombinations) => {
-    const cliquesPotentials = this.getCliquesPotentials()
-    const cliquesNode = filterCliquesByNodeCombinations(this._cliques, event)
-    const clique = getCliqueWithLessNodes(cliquesNode)
-    const potentials = cliquesPotentials[clique.id]
-    const potentialsFiltered = filterCliquePotentialsByNodeCombinations(potentials, event)
-    const thens = mapPotentialsThen(potentialsFiltered)
+  private inferFromJointDistribution (nodeIds: NodeId[], levels: number[]) {
+    console.log(`inferFromJointDistribution not yet implemented.   args: ${nodeIds}, levels: ${levels}`)
+    return 0
+  }
 
-    return sum(thens)
+  private inferFromClique (nodeIds: NodeId[], levels: number[], clique: CliqueId) {
+    console.log(`inferFromClique not yet implemented.   args: ${nodeIds}, levels: ${levels}, clique: ${clique}`)
+    return 0
+  }
+
+  infer = (event: { [name: string]: string}) => {
+    const names = Object.keys(event)
+    if (names.length === 0) return 1
+    const idxs = names.map(name => this._nodes.findIndex(node => node.name === name))
+
+    if (idxs.some(idx => idx === -1)) return 0
+    const levels: number[] = names.map((name, i) => this._nodes[idxs[i]].levels.findIndex(lvl => lvl === event[name]))
+    if (levels.some(lvl => lvl === -1)) return 0
+    if (idxs.length === 1) return this.inferFromMarginal(idxs[0], levels[0])
+
+    const cs = this._cliques.filter(clique => idxs.every(idx => clique.domain.includes(idx))).sort((a, b) => a.domain.length - b.domain.length)
+
+    if (cs.length === 0) return this.inferFromJointDistribution(idxs, levels)
+
+    return this.inferFromClique(idxs, levels, cs[0].id)
   }
 
   inferAll = (options?: IInferAllOptions) => {
-    const given = this._evidence
-    const network = this._network
-    if (Object.keys(this._marginals).length === 0) {
-      // There are no previously computed marginals for the current
-      // evidence.   Compute and cache them.
-      for (const node of getNodesFromNetwork(network)) {
-        const marginal: INodeResult = {}
-        const nodeId = node.id
-        for (const state of getNodeStates(node)) {
-          if (propIsNotNil(nodeId, given)) {
-            marginal[state] = propEq(nodeId, state, given) ? 1 : 0
-          } else {
-            marginal[state] = this.infer({ [nodeId]: state })
-          }
-        }
-        this._marginals[node.id] = marginal
-      }
-    }
-    // If a precision option has been provided, then format the
-    // result to the desired precision
-    if (options && options.precision != null && options.precision > 0) {
-      const marginals = clone(this._marginals)
-      for (const nodeId of Object.keys(marginals)) {
-        const marginal = marginals[nodeId]
-        for (const k of Object.keys(marginal)) {
-          marginal[k] = roundTo(marginal[k], options.precision)
-        }
-      }
-      return marginals
-    } else {
-      // If the precision has not been provided, then return a clone
-      // of the cached marginals.   Cloning ensures that the cached
-      // marginals cannot be mutated externally.
-      return clone(this._marginals)
-    }
+    console.log(`inferAll(${options}) not yet implemented`)
+    return {}
   }
 }

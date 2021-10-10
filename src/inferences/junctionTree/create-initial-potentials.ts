@@ -57,7 +57,7 @@ const createFactorForClique = (network: INetwork, clique: IClique, visited: Set<
  * clique, but not both.  To make inference easier, whenever possible we assign a factor to a clique
  * with the fewer number of nodes.
  * */
-const createICliqueFactors = (cliques: IClique[], network: INetwork): ICliqueFactors => {
+export const createICliqueFactors = (cliques: IClique[], network: INetwork): ICliqueFactors => {
   const visited: Set<string> = new Set()
 
   return reduce((acc, clique) => assoc(clique.id, createFactorForClique(network, clique, visited), acc)
