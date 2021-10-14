@@ -3,6 +3,7 @@ import {
   IInferenceEngine, ICptWithParents, ICptWithoutParents, IInferAllOptions,
 } from '../types'
 import { createICliqueFactors } from '../inferences/junctionTree/create-initial-potentials'
+import { reduce } from 'ramda'
 
 import createCliques from '../inferences/junctionTree/create-cliques'
 import { getConnectedComponents } from '../utils/connected-components'
@@ -83,6 +84,42 @@ const getNetworkInfo = (network: INetwork) => {
   }
 }
 
+const upsertFormula = (formulas: Formula[], formulaLookup: { [name: string]: number}) => (formula: Formula) => {
+  switch (formula.kind) {
+    case FormulaType.EVIDENCE_FUNCTION :
+    case FormulaType.NODE_POTENTIAL :
+    case FormulaType.PRODUCT :
+    case FormulaType.MARGINAL : {
+      const idx = formulaLookup[formula.name]
+      if (idx == null) {
+        // the formula has not already been cached.
+        formula.id = formulas.length
+        formulaLookup[formula.name] = formula.id
+        formulas.push(formula)
+        return formula
+      } else {
+        // the formula already is in the collection!  We can look up the previously cached value and
+        // return it.
+        return formulas[idx]
+      }
+    }
+    case FormulaType.REFERENCE: {
+      const deref = formulas[formula.id]
+      if (deref) {
+        return deref
+      } else {
+        // there is no function at the specified index.   This should never happen that
+        // we have a null reference!
+        throw new Error(`Null reference to formula ${formula.id}`)
+      }
+    }
+    case FormulaType.UNIT:
+      // NEVER ADD THE UNIT POTENTIAL!  It should already be optimized away from being included
+      // directly in any result.
+      return formula
+  }
+}
+
 export class LazyPropagationEngine implements IInferenceEngine {
   private _cliques: FastClique[]
   private _nodes: FastNode[]
@@ -93,11 +130,14 @@ export class LazyPropagationEngine implements IInferenceEngine {
   private _separatorPotentials: FormulaId[] =[]
 
   private clearCachedValues = (root: FormulaId) => {
-    const f = this._formulas[root]
-    const p = this._potentials[root]
-    if (!p) return
-    this._potentials[root] = null
-    f.refrerencedBy.forEach(childId => this.clearCachedValues(childId))
+    console.log(`clearing cache from ${root}`)
+    const ps = this._nodes.map(x => this._potentials[x.id])
+    this._potentials = ps
+    // const f = this._formulas[root]
+    // const p = this._potentials[root]
+    // if (!p) return
+    // this._potentials[root] = null
+    // f.refrerencedBy.forEach(childId => this.clearCachedValues(childId))
   }
 
   constructor (network: INetwork) {
@@ -106,10 +146,11 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const { nodeMap, cliqueMap, factorMap, ccMap, sepSetMap } = info
     const { numberOfCliques, numberOfNodes } = info
 
-    const fs = Array(2 * numberOfNodes + numberOfCliques)
+    const fs: Formula[] = []
     const ns: FastNode[] = Array(numberOfNodes)
     const cs: FastClique[] = Array(numberOfCliques)
     const ccs: number[][] = connectedComponents.map(cc => cc.map(cliqueName => cliqueMap[cliqueName]))
+    const upsert = upsertFormula(fs, {})
 
     // Initialize the collection of nodes using the fast integer indexing.
     // note that some of the fields (children, cliques, factorAssignedTo)
@@ -128,21 +169,20 @@ export class LazyPropagationEngine implements IInferenceEngine {
         factorAssignedTo: 0,
         levels: node.states,
       }
-      fs[i] = new NodePotential(fastnode, ns)
+      upsert(new NodePotential(fastnode, ns))
       ns[i] = fastnode
     })
 
     // Populate the parents of each node.   This is done in a second pass
     // to ensure that all the elements of the nodes collection have already
     // been populated.
-    ns.forEach((node: FastNode, i) => {
+    ns.forEach((node: FastNode) => {
       const { id, parents } = node
       parents.forEach(parentId => {
         ns[parentId].children.push(id)
       })
 
-      fs[i + numberOfNodes] = new EvidenceFunction(node, fs)
-      fs[i + numberOfNodes].id = i + numberOfNodes
+      node.evidenceFunction = upsert(new EvidenceFunction(node)).id
     })
 
     // Initialize the collection of cliques using the fast integer indexing.
@@ -150,7 +190,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
       const neighs: string[] = junctionTree.getNodeEdges(clique.id)
       const neighbors: number[] = neighs.map(neighborname => cliqueMap[neighborname])
       const domain = clique.nodeIds.map(nodename => nodeMap[nodename]).sort()
-      const factors = factorMap[clique.id].map(nodename => nodeMap[nodename] + numberOfNodes)
+      const factors = factorMap[clique.id].map(nodename => nodeMap[nodename])
       const prior = 2 * numberOfNodes + i
       const posterior = prior + numberOfCliques
       const fastclique = {
@@ -174,24 +214,18 @@ export class LazyPropagationEngine implements IInferenceEngine {
 
       // Populate the prior potentials for the clique.  Make sure that the
       // reference count for the factor nodes is updated.
-      fs[prior] = mult(factors.map(nodeId => reference(nodeId, fs)))
-      fs[prior].id = prior
+      fastclique.prior = upsert(mult(factors.map(nodeId => reference(nodeId, fs)))).id
     })
 
-    const messages = propagatePotentials(cs, separators, fs, info.roots)
+    const messages = propagatePotentials(cs, separators, upsert, fs, info.roots)
 
     // Construct the posterior potentials for each clique using the messages
     // propagated between each potential.
 
     cs.forEach(clique => {
-      const msgs = clique.neighbors.map(x => messages[messageName(x, clique.id)])
-      clique.messagesReceived = msgs.map(x => x.id)
-      const posterior = mult([reference(clique.prior, fs), ...msgs])
-      if (posterior.kind !== FormulaType.REFERENCE) {
-        posterior.id = fs.length
-        fs.push(posterior)
-      }
-      clique.posterior = posterior.id
+      const msgs: Formula[][] = clique.neighbors.map(x => messages[messageName(x, clique.id)])
+      clique.messagesReceived = msgs.map(xs => xs.filter(x => x.kind !== FormulaType.UNIT).map(x => x.id))
+      clique.posterior = upsert(mult([reference(clique.prior, fs), ...reduce((acc: Formula[], xs: Formula[]) => { acc.push(...xs); return acc }, [], msgs)])).id
     })
 
     // create posterior separator potentials.   These will always be smaller than the clique potentials
@@ -201,18 +235,15 @@ export class LazyPropagationEngine implements IInferenceEngine {
       if (cliques.length < 2) throw new Error(`Could not find a pair of cliques connected by separator ${ns}`)
       const [ca] = cliques
       const ia: number = ca.separators.findIndex(x => x === i)
+      const fa: Formula = fs[ca.posterior]
       const cb: FastClique = cs.find(x => x.id === ca.neighbors[ia]) as FastClique
-      const ib: number = cb.neighbors.findIndex(x => x === ca.id)
-      const separatorPotential = mult([fs[ca.messagesReceived[ia]], fs[cb.messagesReceived[ib]]])
-      separatorPotential.id = fs.length
-      fs.push(separatorPotential)
-      this._separatorPotentials.push(separatorPotential.id)
+      const fb: Formula = fs[cb.posterior]
+      const cliquePotential = fa.size < fb.size ? fa : fb
+      this._separatorPotentials.push(upsert(marginalize(ns, cliquePotential, fs)).id)
     })
 
-    // Assign the posterior marignals for each node.  Note that either the node will appear in
-    // eactly one clique, or it will appear in 1 or more separators.   In the case when it
-    // occurs in a separator, the separator potential will usually be a smaller potential,
-    // and may require no additional marginalization.
+    // Assign the posterior marignals for each node.  Since the posterior marginals have
+    // been made consistent by message passing, we can pick the smallest potential.
     ns.forEach(fastNode => {
       let baseFormula: Formula = fs[cs[fastNode.cliques[0]].posterior]
       if (fastNode.cliques.length > 1) {
@@ -229,12 +260,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
         })
       } else {
       }
-      const formula = marginalize([fastNode.id], baseFormula, fs)
-      if (formula.kind !== FormulaType.REFERENCE) {
-        formula.id = fs.length
-        fs.push(formula)
-      }
-      fastNode.posteriorMarginal = formula.id
+      fastNode.posteriorMarginal = upsert(marginalize([fastNode.id], baseFormula, fs)).id
     })
 
     const ps = Array(fs.length)

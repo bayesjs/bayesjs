@@ -6,7 +6,7 @@ export type FastClique = {
   factors: NodeId[];
   domain: NodeId[];
   neighbors: CliqueId[];
-  messagesReceived: FormulaId[];
+  messagesReceived: FormulaId[][];
   prior: FormulaId;
   posterior: FormulaId;
   belongsTo: ConnectedComponentId;

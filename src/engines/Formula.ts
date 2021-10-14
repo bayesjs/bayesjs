@@ -78,13 +78,13 @@ export class Marginal {
     const d: number[] = formula.domain
     this.domain = separator.filter(x => d.includes(x))
     this.marginalized = d.filter(x => !separator.includes(x))
-    this.name = `Σ({${this.marginalized.map(x => x.toString()).join(',')}},${formula.name})`
+    this.name = `Σ({${this.marginalized.map(x => x.toString()).join(',')}},${formula.kind === FormulaType.REFERENCE ? formula.name : `ref(${formula.id})`})`
     this.numberOfLevels = this.domain.map(y => formula.numberOfLevels[formula.domain.findIndex(x => x === y)])
     this.size = product(this.numberOfLevels)
   }
 }
 
-export const marginalize: (sepSet: NodeId[], potential: Formula, formulas: Formula[]) => Formula = (sepSet, potential, formulas) => {
+export const marginalize = (sepSet: NodeId[], potential: Formula, formulas: Formula[]) => {
   const dom = potential.domain
   const d: NodeId[] = sepSet.filter(x => dom.includes(x))
   if (d.length === 0) return new Unit()
@@ -111,7 +111,7 @@ export class Product {
 
   constructor (factors: Formula[]) {
     this.factorIds = factors.map(x => x.id)
-    this.name = `𝚷(${factors.map(x => x.name).join(',')})`
+    this.name = `𝚷(${factors.map(x => x.kind === FormulaType.REFERENCE ? x.name : `ref(${x.id})`).join(',')})`
     this.domain = [...new Set(reduce((acc: NodeId[], x: Formula) => ([...acc, ...x.domain])
       , [], factors))]
     this.numberOfLevels = this.domain.map(x => {
@@ -162,13 +162,13 @@ export class EvidenceFunction {
   size: number;
   refrerencedBy: number[] = []
 
-  constructor (node: FastNode, formulas: Formula[]) {
+  constructor (node: FastNode) {
     this.nodeId = node.id
     this.level = null
-    this.domain = [node.id, ...node.parents]
-    this.name = `ϵ(Φ(${node.id}))`
-    this.numberOfLevels = formulas[node.id].numberOfLevels
-    this.size = formulas[node.id].size
+    this.domain = [node.id]
+    this.name = `ϵ(${node.id})`
+    this.numberOfLevels = [node.levels.length]
+    this.size = node.levels.length
   }
 }
 

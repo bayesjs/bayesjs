@@ -86,7 +86,7 @@ const evaluateProduct = (productFormula: Product, nodes: FastNode[], formulas: F
   })
 
   // Cache the normalized potential function and return it.
-  const normalizedResult = result.map(v => v / total)
+  const normalizedResult = total > 0 ? result.map(v => v / total) : result
   potentials[productFormula.id] = normalizedResult
   // console.log(`${productFormula.id}: ${productFormula.name} ::{${productFormula.domain}}= [${normalizedResult}]`)
   return normalizedResult
@@ -162,41 +162,18 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
     total += v
   })
   // Normalize the potential so that it is a probability distribution.
-  const normalizedResult = result.map(v => v / total)
+  const normalizedResult = total > 0 ? result.map(v => v / total) : result
   // console.log(`${marginalFormula.id}: ${marginalFormula.name} ::{${marginalFormula.domain}}= [${normalizedResult}]`)
   potentials[marginalFormula.id] = normalizedResult
   return normalizedResult
 }
 
-const evaluateEvidence = (evidenceFunction: EvidenceFunction, nodes: FastNode[], formulas: Formula[], potentials: MaybeFastPotential[]) => {
-  // First we need to evaluate the formula for the potential that is being marginalized.
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
-  const innerPotential: FastPotential = evaluate(evidenceFunction.nodeId, nodes, formulas, potentials)
+const evaluateEvidence = (evidenceFunction: EvidenceFunction) => {
   // if no evidence is provided, then we can return the inner potential
   if (evidenceFunction.level == null) {
-    potentials[evidenceFunction.id] = innerPotential
-    // console.log(`${evidenceFunction.id}: ${evidenceFunction.name} ::{${evidenceFunction.domain}}= [${innerPotential}]`)
-    return innerPotential
+    return Array(evidenceFunction.size).fill(1 / evidenceFunction.size)
   }
-  const innerFormula = formulas[evidenceFunction.nodeId]
-  const idxOfNode: number = innerFormula.domain.findIndex((x: number) => x === evidenceFunction.nodeId)
-
-  const result: number[] = Array(innerPotential.length)
-  let total = 0
-  innerPotential.forEach((v, i) => {
-    const combos = indexToCombination(i, innerFormula.numberOfLevels)
-    if (combos[idxOfNode] === evidenceFunction.level) {
-      result[i] = v
-      total += +v
-    } else {
-      result[i] = 0
-    }
-  })
-  // Normalize the potential so that it is a probability distribution.
-  const normalizedResult = result.map(v => v / total)
-  // console.log(`${evidenceFunction.id}: ${evidenceFunction.name} ::{${evidenceFunction.domain}}= [${normalizedResult}]`)
-  potentials[evidenceFunction.id] = normalizedResult
-  return normalizedResult
+  return Array(evidenceFunction.size).map((_, i) => i === evidenceFunction.level ? 1 : 0)
 }
 
 /**
@@ -241,7 +218,7 @@ export const evaluate = (formulaId: FormulaId, nodes: FastNode[], formulas: Form
       }
       case FormulaType.EVIDENCE_FUNCTION: {
         const evidenceFunction = formula as EvidenceFunction
-        return evaluateEvidence(evidenceFunction, nodes, formulas, potentials)
+        return evaluateEvidence(evidenceFunction)
       }
       case FormulaType.UNIT:
         // Note, there is only one implementation of the unit potential function.
