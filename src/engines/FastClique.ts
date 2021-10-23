@@ -9,6 +9,7 @@ export type FastClique = {
   messagesReceived: FormulaId[][];
   prior: FormulaId;
   posterior: FormulaId;
+  evidence: FormulaId[];
   belongsTo: ConnectedComponentId;
   separators: NodeId[];
 }

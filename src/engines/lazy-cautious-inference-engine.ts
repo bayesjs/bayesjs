@@ -7,7 +7,7 @@ import { reduce } from 'ramda'
 
 import createCliques from '../inferences/junctionTree/create-cliques'
 import { getConnectedComponents } from '../utils/connected-components'
-import { cptToFastPotential, FastPotential, fastPotentialToCPT } from './FastPotential'
+import { cptToFastPotential, FastPotential, fastPotentialToCPT, indexToCombination } from './FastPotential'
 import { FastClique } from './FastClique'
 import { FastNode } from './FastNode'
 import { NodeId, CliqueId, ConnectedComponentId, FormulaId } from './common'
@@ -201,6 +201,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
         neighbors,
         prior,
         posterior,
+        evidence: domain.map(i => i + numberOfNodes),
         messagesReceived: [],
         belongsTo: ccMap[i.toString()],
         separators: neighs.map(neigh => sepSetMap[clique.id][neigh]),
@@ -218,12 +219,15 @@ export class LazyPropagationEngine implements IInferenceEngine {
     })
 
     const messages = propagatePotentials(cs, separators, upsert, fs, info.roots)
+    console.log(messages)
 
     // Construct the posterior potentials for each clique using the messages
     // propagated between each potential.
 
     cs.forEach(clique => {
-      const msgs: Formula[][] = clique.neighbors.map(x => messages[messageName(x, clique.id)])
+      console.log(clique.id)
+      const msgs: Formula[][] = clique.neighbors.map(x => messages[messageName(x, clique.id)] || [])
+      console.log(msgs)
       clique.messagesReceived = msgs.map(xs => xs.filter(x => x.kind !== FormulaType.UNIT).map(x => x.id))
       clique.posterior = upsert(mult([reference(clique.prior, fs), ...reduce((acc: Formula[], xs: Formula[]) => { acc.push(...xs); return acc }, [], msgs)])).id
     })
@@ -376,6 +380,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
    */
   private inferFromMarginal (nodeId: NodeId, level: number) {
     const p = evaluate(this._nodes[nodeId].posteriorMarginal, this._nodes, this._formulas, this._potentials)
+    this._formulas.map(x => x.id).forEach(x => this.showPotential(x))
     return p[level]
   }
 
@@ -404,6 +409,30 @@ export class LazyPropagationEngine implements IInferenceEngine {
     if (cs.length === 0) return this.inferFromJointDistribution(idxs, levels)
 
     return this.inferFromClique(idxs, levels, cs[0].id)
+  }
+
+  showPotential = (id: number) => {
+    const p = this._potentials[id]
+    const f = this._formulas[id]
+
+    let result = ''
+
+    result += `\n${id}: ${f.name}\n`
+
+    if (p == null) return
+
+    if (p != null) {
+      const header: string = f.domain.map(x => x.toString().padStart(4, ' ')).join('') + ' |       '
+      const sep: string = ''.padStart(header.length, '-')
+
+      const rows = p.map((v, i) => {
+        const ps: number[] = indexToCombination(i, f.numberOfLevels)
+        return `${ps.map(x => x.toString().padStart(4, ' ')).join('')} | ${v.toExponential(4)}`
+      })
+
+      result += [header, sep, ...rows].join('\n')
+    }
+    console.log(result)
   }
 
   inferAll = (options?: IInferAllOptions) => {

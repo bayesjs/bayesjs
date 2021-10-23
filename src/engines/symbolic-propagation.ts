@@ -1,7 +1,7 @@
-import { partition } from 'ramda'
+import { partition, uniqBy } from 'ramda'
 import { CliqueId } from './common'
 import { FastClique } from './FastClique'
-import { Formula, mult, marginalize, reference } from './Formula'
+import { Formula, mult, marginalize, reference, FormulaType, EvidenceFunction } from './Formula'
 
 type Messages = { [key: string]: Formula[] }
 
@@ -27,17 +27,22 @@ const passMessage = (sepSet: number[], messages: Messages, upsert: (f: Formula) 
   // clique (other than the target).   These messages need to be passed on
   // to the target.
   const neighborMessages: Formula[] = []
+  const neighborEvidence: EvidenceFunction[] = []
   src.neighbors.forEach((neighborId: number) => {
     if (neighborId !== trg.id) { // don't pass a message back to the sender!
-      const msg = messages[messageName(neighborId, src.id)]
-      if (msg) neighborMessages.push(...msg)
+      const msgs = messages[messageName(neighborId, src.id)]
+      const [es, ms] = partition(m => m.kind === FormulaType.EVIDENCE_FUNCTION, msgs)
+      neighborEvidence.push(...es as EvidenceFunction[])
+      neighborMessages.push(...ms)
     }
   })
   // Construct the factors for the message that will be passed to the target.
   // Each factor is either the clique potential or one of the messages to
   // the source clique, marginalized to remove any nodes that are not in
   // common between the source and target cliques.
-  const factors: Formula[] = [reference(src.prior, formulas), ...neighborMessages]
+  const cliqueEvidence: EvidenceFunction[] = src.evidence.map(id => formulas[id] as EvidenceFunction)
+  const evidence = uniqBy(x => x.id, [...cliqueEvidence, ...neighborEvidence])
+  const factors: Formula[] = uniqBy(x => x.id, [reference(src.prior, formulas), ...neighborMessages])
 
   // remove the factors don't have any variables that are d connected to the
   // variables in the separation set.
@@ -45,14 +50,16 @@ const passMessage = (sepSet: number[], messages: Messages, upsert: (f: Formula) 
   const relevantFactors: Formula[] = factors.filter(f => isRelevantPotential(f, sepSet))
 
   const [dontRequireMarginalization, requireMarginalization] = partition<Formula>((f: Formula) => f.domain.every(x => sepSet.includes(x)), relevantFactors)
-  const msgs = [...dontRequireMarginalization]
+  const msgs = [...dontRequireMarginalization, ...evidence.filter(x => dontRequireMarginalization.some(y => y.domain.includes(x.nodeId)))]
 
   if (requireMarginalization.length > 0) {
     let marg: Formula
-    if (requireMarginalization.length === 1) {
-      marg = upsert(marginalize(sepSet, requireMarginalization[0], formulas))
+    const es = evidence.filter(x => requireMarginalization.some(y => y.domain.includes(x.nodeId)))
+    const ms = [...requireMarginalization, ...es]
+    if (ms.length === 1) {
+      marg = upsert(marginalize(sepSet, ms[0], formulas))
     } else {
-      const prod = upsert(mult(requireMarginalization))
+      const prod = upsert(mult(ms))
       marg = upsert(marginalize(sepSet, prod, formulas))
     }
     msgs.push(marg)

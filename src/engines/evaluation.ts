@@ -47,11 +47,11 @@ const evaluateProduct = (productFormula: Product, nodes: FastNode[], formulas: F
     potentials[productFormula.id] = result // unit potential
     return result
   }
-  if (factorPotentials.length === 1) {
-    // eslint-disable-next-line prefer-destructuring
-    potentials[productFormula.id] = factorPotentials[0]
-    return factorPotentials[0]
-  }
+  // if (factorPotentials.length === 1) {
+  //   // eslint-disable-next-line prefer-destructuring
+  //   potentials[productFormula.id] = factorPotentials[0]
+  //   return factorPotentials[0]
+  // }
 
   // If we arrived here, there are at least two factors.  We start by initializing
   // an array for multiplicatively accumulating the potential values
@@ -129,24 +129,22 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   const innerFormula = formulas[marginalFormula.potential]
   // Marginalization will remove zero or more variables (nodes) from the distribution.
   // We need to know which nodes are retained after the marginalization.
-  const { domain } = innerFormula
-  const nodesToKeep = domain.filter((x) => marginalFormula.domain.includes(x))
-  // If all the nodes are being kept, then no work is required.  We can simply
-  // return the original distribution
-  if (nodesToKeep.length === domain.length) {
-    potentials[marginalFormula.id] = innerPotential
-    return innerPotential
-  }
+  const { domain: innerDomain, numberOfLevels: innerNumbrerOfLevels } = innerFormula
+  const { domain: marginalDomain, size: marginalSize, numberOfLevels: marginalNumberOfLevels } = marginalFormula
+
+  const nodesToKeep = innerDomain.filter((x) => marginalFormula.domain.includes(x))
   // If we got here, then one or more nodes need to be marginalized from the given
-  // potential.  The resulting potential function should be the result of
+  // potential (possibly just reordering of the entries in the potential array).
+  // The resulting potential function should be the result of
   // additively accumulating the potentials grouped on like values of the remaining
   // nodes.   Because the fast potential structure uses an integer indexing scheme
   // which encodes the values of the variables, we need to know how to convert between
   // indices in the original potential function and the result.  We start by
   // populating an empty array with the correct number of entries for  the new
   // potential function.
-  const IdxsToKeep: number[] = nodesToKeep.map(x => domain.findIndex(y => x === y))
-  const result: number[] = Array(marginalFormula.size).fill(0)
+  const IdxsToKeep: number[] = marginalDomain.map(x => innerDomain.findIndex(y => x === y))
+  console.log(`nodesToKeep: ${nodesToKeep}, marginalDomain: ${marginalDomain}, innerDomain: ${innerDomain}, idxs: ${IdxsToKeep}`)
+  const result: number[] = Array(marginalSize).fill(0)
   let total = 0
   // For each value in the old potential function, we convert its index to
   // the combinations (levels) of the variables.   We then filter out the
@@ -156,8 +154,8 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   // we can compute the correct index in the resultant potential and add
   // the old potential's value to that element.
   innerPotential.forEach((v, i) => {
-    const combos = indexToCombination(i, innerFormula.numberOfLevels)
-    const idx = combinationToIndex(IdxsToKeep.map(idx => combos[idx]), marginalFormula.numberOfLevels)
+    const combos = indexToCombination(i, innerNumbrerOfLevels)
+    const idx = combinationToIndex(IdxsToKeep.map(idx => combos[idx]), marginalNumberOfLevels)
     result[idx] += v
     total += v
   })
@@ -168,12 +166,22 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   return normalizedResult
 }
 
-const evaluateEvidence = (evidenceFunction: EvidenceFunction) => {
+const evaluateEvidence = (evidenceFunction: EvidenceFunction, potentials: MaybeFastPotential[]): FastPotential => {
   // if no evidence is provided, then we can return the inner potential
+  const result: number[] = Array(evidenceFunction.size).fill(1)
+  let total = 0
   if (evidenceFunction.level == null) {
-    return Array(evidenceFunction.size).fill(1 / evidenceFunction.size)
+    potentials[evidenceFunction.id] = result.fill(1)
+    total = result.length
+  } else {
+    result.forEach((_, i) => {
+      result[i] = i === evidenceFunction.level ? 1 : 0
+      total += result[i]
+    })
   }
-  return Array(evidenceFunction.size).map((_, i) => i === evidenceFunction.level ? 1 : 0)
+  const normalizedResult = result.map(x => x / total)
+  potentials[evidenceFunction.id] = normalizedResult
+  return normalizedResult
 }
 
 /**
@@ -218,7 +226,8 @@ export const evaluate = (formulaId: FormulaId, nodes: FastNode[], formulas: Form
       }
       case FormulaType.EVIDENCE_FUNCTION: {
         const evidenceFunction = formula as EvidenceFunction
-        return evaluateEvidence(evidenceFunction)
+        const result: FastPotential = evaluateEvidence(evidenceFunction, potentials)
+        return result
       }
       case FormulaType.UNIT:
         // Note, there is only one implementation of the unit potential function.
