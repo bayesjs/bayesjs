@@ -88,7 +88,6 @@ const evaluateProduct = (productFormula: Product, nodes: FastNode[], formulas: F
   // Cache the normalized potential function and return it.
   const normalizedResult = total > 0 ? result.map(v => v / total) : result
   potentials[productFormula.id] = normalizedResult
-  // console.log(`${productFormula.id}: ${productFormula.name} ::{${productFormula.domain}}= [${normalizedResult}]`)
   return normalizedResult
 }
 
@@ -132,7 +131,6 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   const { domain: innerDomain, numberOfLevels: innerNumbrerOfLevels } = innerFormula
   const { domain: marginalDomain, size: marginalSize, numberOfLevels: marginalNumberOfLevels } = marginalFormula
 
-  const nodesToKeep = innerDomain.filter((x) => marginalFormula.domain.includes(x))
   // If we got here, then one or more nodes need to be marginalized from the given
   // potential (possibly just reordering of the entries in the potential array).
   // The resulting potential function should be the result of
@@ -143,7 +141,6 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   // populating an empty array with the correct number of entries for  the new
   // potential function.
   const IdxsToKeep: number[] = marginalDomain.map(x => innerDomain.findIndex(y => x === y))
-  console.log(`nodesToKeep: ${nodesToKeep}, marginalDomain: ${marginalDomain}, innerDomain: ${innerDomain}, idxs: ${IdxsToKeep}`)
   const result: number[] = Array(marginalSize).fill(0)
   let total = 0
   // For each value in the old potential function, we convert its index to
@@ -161,7 +158,6 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   })
   // Normalize the potential so that it is a probability distribution.
   const normalizedResult = total > 0 ? result.map(v => v / total) : result
-  // console.log(`${marginalFormula.id}: ${marginalFormula.name} ::{${marginalFormula.domain}}= [${normalizedResult}]`)
   potentials[marginalFormula.id] = normalizedResult
   return normalizedResult
 }
@@ -221,7 +217,6 @@ export const evaluate = (formulaId: FormulaId, nodes: FastNode[], formulas: Form
         // If the formula is a reference, evaluate the referenced potential
         const ref = formula as Reference
         const result = evaluate(ref.formulaId, nodes, formulas, potentials)
-        // console.log(`${ref.id}: ${ref.name} ::{${ref.domain}}= [${result}]`)
         return result
       }
       case FormulaType.EVIDENCE_FUNCTION: {

@@ -606,12 +606,11 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
 describe('infers', () => {
   describe('hugeNetwork', () => {
     const network = createNetwork(...allNodes)
-    const engine = new InferenceEngine(network)
     const testNames = Object.keys(tests)
 
+    const engine = new InferenceEngine(network)
     for (const testName of testNames) {
       const createMethod = tests[testName]
-
       it(`${testName} with Junction Tree`, () => createMethod(engine))
     }
   })

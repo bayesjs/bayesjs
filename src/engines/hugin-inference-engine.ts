@@ -11,7 +11,10 @@ import roundTo = require('round-to')
 // Hugin algorithm for propagation of evidence.   It internally
 // caches the junction tree structure, clique potentials and
 // marginal distributions to speed up repeated queries with the
-// same evidence.
+// same evidence.   It is included for completeness only.  The
+// lazy-cautious-inference-engine should be much facter for repeated
+// inferences and for retraction (or partial retraction ) of
+// hard and soft evidence.
 export class HuginInferenceEngine implements IInferenceEngine {
   // internal caches of bayes net structure.  Note: The topology
   // of the Bayes network should not be able to be modified by

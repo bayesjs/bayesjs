@@ -3,12 +3,12 @@ import * as expect from 'expect'
 import { allNodes } from '../../models/alarm'
 import { createNetwork } from '../../src/utils'
 import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
-import { HuginInferenceEngine } from '../../src/engines/hugin-inference-engine'
+import { InferenceEngine } from '../../src/index'
 
 const network = createNetwork(...allNodes)
 const hugeNetwork = createNetwork(...hugeNetworkAllNodes)
-const engine = new HuginInferenceEngine(network)
-const hugeEngine = new HuginInferenceEngine(hugeNetwork)
+const engine = new InferenceEngine(network)
+const hugeEngine = new InferenceEngine(hugeNetwork)
 
 describe('InferAll Utils', () => {
   describe('After mutating the distribution', () => {

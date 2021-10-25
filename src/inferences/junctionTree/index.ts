@@ -4,10 +4,10 @@ import {
   INetwork,
 } from '../../types'
 
-import { HuginInferenceEngine } from '../../engines/hugin-inference-engine'
+import { LazyPropagationEngine } from '../../engines'
 
 export const infer: IInfer = (network: INetwork, nodes: ICombinations, given: ICombinations = {}): number => {
-  const engine = new HuginInferenceEngine(network)
+  const engine = new LazyPropagationEngine(network)
   engine.setEvidence(given)
   return engine.infer(nodes)
 }

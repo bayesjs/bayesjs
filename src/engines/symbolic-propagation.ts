@@ -7,21 +7,6 @@ type Messages = { [key: string]: Formula[] }
 
 export const messageName = (sourceId: CliqueId, targetId: CliqueId) => `𝚿(${sourceId},${targetId})`
 
-function isDConnected (x: number, target: number[]): boolean {
-  console.log(`testing if ${x} is d-connected to ${target}`)
-  return true
-}
-
-function isBarren (x: number): boolean {
-  console.log(`testing if ${x} is barren`)
-  return false
-}
-
-function isRelevantPotential (formula: Formula, target: number[]) {
-  const { domain } = formula
-  return domain.some((x: number) => isDConnected(x, target)) && domain.some((x: number) => !isBarren(x))
-}
-
 const passMessage = (sepSet: number[], messages: Messages, upsert: (f: Formula) => Formula, formulas: Formula[], src: FastClique, trg: FastClique) => {
   // Get all the messages that have been received by neighbors of the source
   // clique (other than the target).   These messages need to be passed on
@@ -44,12 +29,7 @@ const passMessage = (sepSet: number[], messages: Messages, upsert: (f: Formula) 
   const evidence = uniqBy(x => x.id, [...cliqueEvidence, ...neighborEvidence])
   const factors: Formula[] = uniqBy(x => x.id, [reference(src.prior, formulas), ...neighborMessages])
 
-  // remove the factors don't have any variables that are d connected to the
-  // variables in the separation set.
-  // TODO: UPDATE THIS FOR LAZY CAUTIOUS PROPAGATION.
-  const relevantFactors: Formula[] = factors.filter(f => isRelevantPotential(f, sepSet))
-
-  const [dontRequireMarginalization, requireMarginalization] = partition<Formula>((f: Formula) => f.domain.every(x => sepSet.includes(x)), relevantFactors)
+  const [dontRequireMarginalization, requireMarginalization] = partition<Formula>((f: Formula) => f.domain.every(x => sepSet.includes(x)), factors)
   const msgs = [...dontRequireMarginalization, ...evidence.filter(x => dontRequireMarginalization.some(y => y.domain.includes(x.nodeId)))]
 
   if (requireMarginalization.length > 0) {
@@ -64,7 +44,6 @@ const passMessage = (sepSet: number[], messages: Messages, upsert: (f: Formula) 
     }
     msgs.push(marg)
   }
-
   messages[messageName(src.id, trg.id)] = msgs
 }
 
@@ -75,11 +54,11 @@ const collectCliquesEvidence = (cliques: FastClique[], separators: number[][], m
     const src = cliques[id]
     const { neighbors } = src
     for (const neighbor of neighbors) {
-      if (parentId && neighbor === parentId) continue
+      if (parentId != null && neighbor === parentId) continue
       process(neighbor, id)
     }
 
-    if (!parentId) return
+    if (parentId == null) return
     const trg = cliques[parentId]
 
     const neighborIndex: number = neighbors.findIndex(id => id === parentId)

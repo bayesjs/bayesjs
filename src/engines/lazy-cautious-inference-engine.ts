@@ -1,149 +1,69 @@
 import {
-  INetwork,
+  INetwork, INetworkResult,
   IInferenceEngine, ICptWithParents, ICptWithoutParents, IInferAllOptions,
 } from '../types'
-import { createICliqueFactors } from '../inferences/junctionTree/create-initial-potentials'
-import { reduce } from 'ramda'
+import { clone } from 'ramda'
+import roundTo = require('round-to')
 
-import createCliques from '../inferences/junctionTree/create-cliques'
-import { getConnectedComponents } from '../utils/connected-components'
 import { cptToFastPotential, FastPotential, fastPotentialToCPT, indexToCombination } from './FastPotential'
 import { FastClique } from './FastClique'
 import { FastNode } from './FastNode'
-import { NodeId, CliqueId, ConnectedComponentId, FormulaId } from './common'
-import { Formula, NodePotential, FormulaType, reference, mult, EvidenceFunction, updateReferences, marginalize } from './Formula'
-import { messageName, propagatePotentials } from './symbolic-propagation'
+import { NodeId, CliqueId, FormulaId } from './common'
+import { Formula, EvidenceFunction, updateReferences } from './Formula'
+import { propagatePotentials } from './symbolic-propagation'
 import { evaluate } from './evaluation'
+import { getNetworkInfo, initializeCliques, initializeEvidence, initializeNodeParents, initializeNodes, initializePosteriorCliquePotentials, initializePosteriorNodePotentials, initializePriorNodePotentials, initializeSeparatorPotentials, NetworkInfo, upsertFormula } from './util'
 
-const getNetworkInfo = (network: INetwork) => {
-  const { cliques, sepSets, junctionTree } = createCliques(network)
-
-  const factorMap = createICliqueFactors(cliques, network)
-  const ccs = getConnectedComponents(junctionTree)
-
-  const numberOfConnectedComponents = ccs.length
-  const numberOfMessages = 2 * (cliques.length - numberOfConnectedComponents)
-  const numberOfCliques = cliques.length
-  const numberOfNodes = Object.keys(network).length
-  const numberOfFormulas = numberOfNodes + numberOfCliques * 4 + numberOfMessages
-  const cliqueOffset = numberOfNodes
-  const messageOffset = cliqueOffset + numberOfCliques * 4
-
-  const nodeMap: { [nodename: string]: number } = {}
-  Object.keys(network).forEach((k, i) => { nodeMap[k] = i })
-  const cliqueMap: { [cliquename: string]: number} = {}
-  Object.values(cliques).forEach((k, i) => { cliqueMap[k.id] = i })
-
-  const connectedComponents = ccs.map(cc => cc.map(cliqueName => cliqueMap[cliqueName]))
-  const roots: CliqueId[] = connectedComponents.map(xs => xs[0])
-
-  const ccMap: { [cliqueId: string]: ConnectedComponentId} = {}
-  ccs.forEach((cc, i) => {
-    cc.forEach(cliqueId => {
-      ccMap[cliqueId.toString()] = i
-    })
-  })
-
-  const sepSetMap: { [cliqueId: string]: { [cliqueId: string]: number }} = {}
-  const separators: number[][] = []
-  const separatorNameToId: { [name: string]: number} = {}
-  sepSets.forEach(({ ca, cb, sharedNodes }) => {
-    const a = ca
-    const b = cb
-    if (!sepSetMap[a.toString()]) sepSetMap[a.toString()] = {}
-    if (!sepSetMap[b.toString()]) sepSetMap[b.toString()] = {}
-    const members: NodeId[] = sharedNodes.map((nodename: string) => nodeMap[nodename])
-    const name = members.sort().toString()
-    if (!separatorNameToId[name]) {
-      separatorNameToId[name] = separators.length
-      separators.push(members)
-    }
-    const idx = separatorNameToId[name]
-    sepSetMap[a.toString()][b.toString()] = idx
-    sepSetMap[b.toString()][a.toString()] = idx
-  })
-
-  return {
-    cliques,
-    separators,
-    junctionTree,
-    connectedComponents,
-    factorMap,
-    cliqueMap,
-    nodeMap,
-    sepSetMap,
-    ccMap,
-    numberOfCliques,
-    numberOfConnectedComponents,
-    numberOfFormulas,
-    numberOfNodes,
-    numberOfMessages,
-    cliqueOffset,
-    messageOffset,
-    roots,
-  }
-}
-
-const upsertFormula = (formulas: Formula[], formulaLookup: { [name: string]: number}) => (formula: Formula) => {
-  switch (formula.kind) {
-    case FormulaType.EVIDENCE_FUNCTION :
-    case FormulaType.NODE_POTENTIAL :
-    case FormulaType.PRODUCT :
-    case FormulaType.MARGINAL : {
-      const idx = formulaLookup[formula.name]
-      if (idx == null) {
-        // the formula has not already been cached.
-        formula.id = formulas.length
-        formulaLookup[formula.name] = formula.id
-        formulas.push(formula)
-        return formula
-      } else {
-        // the formula already is in the collection!  We can look up the previously cached value and
-        // return it.
-        return formulas[idx]
-      }
-    }
-    case FormulaType.REFERENCE: {
-      const deref = formulas[formula.id]
-      if (deref) {
-        return deref
-      } else {
-        // there is no function at the specified index.   This should never happen that
-        // we have a null reference!
-        throw new Error(`Null reference to formula ${formula.id}`)
-      }
-    }
-    case FormulaType.UNIT:
-      // NEVER ADD THE UNIT POTENTIAL!  It should already be optimized away from being included
-      // directly in any result.
-      return formula
-  }
-}
-
+/** This inference engine uses a modified version of the lazy cautious message
+ * propigation strategy described in:
+ * "Lazy Propagation: A Junction Tree Inference Algorithm based on Lazy evaluation"
+ * by Madsen and Jensen.
+ *
+ * This implementation extends the algorithm described by the authors by using
+ * a symbolic message passing architecture.   Message passing populates a
+ * collection of formulas for each message and posterior marginals using the
+ * AST that is made explicit in the Formula type.  The syntax of the ASTs has
+ * been chosen so that it can be performed once, and need not be updated with
+ * changes in either hard or soft evidence.
+ *
+ * The potentials are evaluated upon demand whenever the infer function is
+ * called.   The inference results and the results of any intermediate
+ * computations are stored in the potentials cache to facilitate subsequent
+ * inferences.   This separation of concerns between message passing and
+ * evaluation allows not only fast retraction of hard evidence, but also
+ * replacement of potential functions for individual nodes of the Bayes
+ * network without invalidating the entire cache.
+ *
+ */
 export class LazyPropagationEngine implements IInferenceEngine {
   private _cliques: FastClique[]
   private _nodes: FastNode[]
   private _potentials: (FastPotential | null)[]
   private _formulas: Formula[]
-  private _connectdComponents: NodeId[][]
+  private _connectedComponents: NodeId[][]
   private _separators: NodeId[][]
   private _separatorPotentials: FormulaId[] =[]
 
+  /** This function recursively clears the cached potentials starting from the given
+   * formula id.   It terminates the recursion down any branch when it encounters
+   * a cached value that is null, because this implies that all cached values that
+   * are depends of that potential are also null.
+   */
   private clearCachedValues = (root: FormulaId) => {
-    console.log(`clearing cache from ${root}`)
-    const ps = this._nodes.map(x => this._potentials[x.id])
-    this._potentials = ps
-    // const f = this._formulas[root]
-    // const p = this._potentials[root]
-    // if (!p) return
-    // this._potentials[root] = null
-    // f.refrerencedBy.forEach(childId => this.clearCachedValues(childId))
+    const f = this._formulas[root]
+    const p = this._potentials[root]
+    // If the cache rooted on this node has already been cleared, then
+    // exit.
+    if (!p) return
+    // otherwise, clear this node and (recursively) all its children
+    this._potentials[root] = null
+    f.refrerencedBy.forEach(childId => this.clearCachedValues(childId))
   }
 
   constructor (network: INetwork) {
-    const info = getNetworkInfo(network)
-    const { cliques, junctionTree, connectedComponents, separators } = info
-    const { nodeMap, cliqueMap, factorMap, ccMap, sepSetMap } = info
+    const info: NetworkInfo = getNetworkInfo(network)
+    const { connectedComponents, separators } = info
+    const { nodeMap, cliqueMap } = info
     const { numberOfCliques, numberOfNodes } = info
 
     const fs: Formula[] = []
@@ -152,164 +72,65 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const ccs: number[][] = connectedComponents.map(cc => cc.map(cliqueName => cliqueMap[cliqueName]))
     const upsert = upsertFormula(fs, {})
 
-    // Initialize the collection of nodes using the fast integer indexing.
-    // note that some of the fields (children, cliques, factorAssignedTo)
-    // cannot be populated on the initial pass.
-    Object.values(network).forEach((node, i) => {
-      const fastnode = {
-        id: i,
-        name: node.id,
-        parents: node.parents.map(parentname => nodeMap[parentname]),
-        children: [],
-        referencedBy: [i],
-        formula: i,
-        posteriorMarginal: 0,
-        evidenceFunction: i + numberOfNodes,
-        cliques: [],
-        factorAssignedTo: 0,
-        levels: node.states,
-      }
-      upsert(new NodePotential(fastnode, ns))
-      ns[i] = fastnode
-    })
-
-    // Populate the parents of each node.   This is done in a second pass
-    // to ensure that all the elements of the nodes collection have already
-    // been populated.
-    ns.forEach((node: FastNode) => {
-      const { id, parents } = node
-      parents.forEach(parentId => {
-        ns[parentId].children.push(id)
-      })
-
-      node.evidenceFunction = upsert(new EvidenceFunction(node)).id
-    })
-
-    // Initialize the collection of cliques using the fast integer indexing.
-    cliques.forEach((clique, i) => {
-      const neighs: string[] = junctionTree.getNodeEdges(clique.id)
-      const neighbors: number[] = neighs.map(neighborname => cliqueMap[neighborname])
-      const domain = clique.nodeIds.map(nodename => nodeMap[nodename]).sort()
-      const factors = factorMap[clique.id].map(nodename => nodeMap[nodename])
-      const prior = 2 * numberOfNodes + i
-      const posterior = prior + numberOfCliques
-      const fastclique = {
-        id: i,
-        name: clique.id,
-        factors,
-        domain,
-        neighbors,
-        prior,
-        posterior,
-        evidence: domain.map(i => i + numberOfNodes),
-        messagesReceived: [],
-        belongsTo: ccMap[i.toString()],
-        separators: neighs.map(neigh => sepSetMap[clique.id][neigh]),
-      }
-      // append the clique to the fast cliques collection.
-      cs[i] = fastclique
-
-      // For each node in this clique, append the reverse lookup information
-      // in the corresponding fast node.
-      domain.forEach(nodeId => { ns[nodeId].cliques.push(i) })
-
-      // Populate the prior potentials for the clique.  Make sure that the
-      // reference count for the factor nodes is updated.
-      fastclique.prior = upsert(mult(factors.map(nodeId => reference(nodeId, fs)))).id
-    })
-
+    initializeNodes(network, nodeMap, upsert, ns)
+    initializeNodeParents(ns)
+    initializeEvidence(ns, upsert)
+    initializeCliques(info, upsert, ns, cs, fs)
     const messages = propagatePotentials(cs, separators, upsert, fs, info.roots)
-    console.log(messages)
-
-    // Construct the posterior potentials for each clique using the messages
-    // propagated between each potential.
-
-    cs.forEach(clique => {
-      console.log(clique.id)
-      const msgs: Formula[][] = clique.neighbors.map(x => messages[messageName(x, clique.id)] || [])
-      console.log(msgs)
-      clique.messagesReceived = msgs.map(xs => xs.filter(x => x.kind !== FormulaType.UNIT).map(x => x.id))
-      clique.posterior = upsert(mult([reference(clique.prior, fs), ...reduce((acc: Formula[], xs: Formula[]) => { acc.push(...xs); return acc }, [], msgs)])).id
-    })
-
-    // create posterior separator potentials.   These will always be smaller than the clique potentials
-    // and may be useful in rapidly computing posterior marginals of nodes.
-    separators.map((ns, i) => {
-      const cliques = cs.filter(c => c.separators.includes(i))
-      if (cliques.length < 2) throw new Error(`Could not find a pair of cliques connected by separator ${ns}`)
-      const [ca] = cliques
-      const ia: number = ca.separators.findIndex(x => x === i)
-      const fa: Formula = fs[ca.posterior]
-      const cb: FastClique = cs.find(x => x.id === ca.neighbors[ia]) as FastClique
-      const fb: Formula = fs[cb.posterior]
-      const cliquePotential = fa.size < fb.size ? fa : fb
-      this._separatorPotentials.push(upsert(marginalize(ns, cliquePotential, fs)).id)
-    })
-
-    // Assign the posterior marignals for each node.  Since the posterior marginals have
-    // been made consistent by message passing, we can pick the smallest potential.
-    ns.forEach(fastNode => {
-      let baseFormula: Formula = fs[cs[fastNode.cliques[0]].posterior]
-      if (fastNode.cliques.length > 1) {
-        // Find the smallest separator set that contains the node.   Then marginalize that
-        // separator
-
-        this._separatorPotentials.forEach((formId: number) => {
-          const f: Formula = fs[formId]
-          if (f.domain.includes(fastNode.id)) {
-            if (f.size < baseFormula.size) {
-              baseFormula = f
-            }
-          }
-        })
-      } else {
-      }
-      fastNode.posteriorMarginal = upsert(marginalize([fastNode.id], baseFormula, fs)).id
-    })
-
-    const ps = Array(fs.length)
-    // Convert the cpts for each variable into a potential function
-    // and cache at the same index as the node.
-    ns.forEach((node, i) => {
-      ps[i] = cptToFastPotential(node, network[node.name].cpt, ns)
-      // node.posteriorMarginal = pickMarginal(node.id, cliques, formulas)
-    })
-
+    initializePosteriorCliquePotentials(upsert, ns, cs, messages, fs)
+    this._separatorPotentials = initializeSeparatorPotentials(info, upsert, cs, fs)
+    initializePosteriorNodePotentials(upsert, ns, cs, fs, this._separatorPotentials)
+    const ps: FastPotential[] = new Array(fs.length)
+    initializePriorNodePotentials(network, ps, ns)
     updateReferences(fs)
-    // Set the values of the priavate properties.
+
+    // Set the values of the private properties.
     this._nodes = ns
     this._cliques = cs
     this._formulas = fs
     this._potentials = ps
-    this._connectdComponents = ccs
+    this._connectedComponents = ccs
     this._separators = separators
   }
 
+  // Implmentation of the hasVariable interface function.  Returns true
+  // if and only if there is a variable with the given name
   hasVariable = (name: string) => this._nodes.map(x => x.name).includes(name)
+
+  // Implementation of the getVariables interface function.
   getVariables = () => this._nodes.map(x => x.name)
 
+  // Implementation of teh getParents interface function.
   getParents = (name: string) => {
     const node = this._nodes.find(x => x.name === name)
     if (!node) return []
     return node.parents.map(i => this._nodes[i].name)
   }
 
+  // Implementation of the hasParent interface function
   hasParent = (name: string, parent: string) => this.getParents(name).includes(parent)
 
+  // implementation of the getLevels interface function
   getLevels = (name: string) => {
     const node = this._nodes.find(x => x.name === name)
     if (!node) return []
     return node.levels
   }
 
+  // implementation of the hasLevel interface function
   hasLevel = (name: string, level: string) => this.getLevels(name).includes(level)
 
+  // implementation of the getDistribution interface function.
+  // this returns the prior distribution for the given variable.
   getDistribution = (name: string) => {
     const node = this._nodes.find(x => x.name === name)
     if (!node) return []
     return fastPotentialToCPT(node.id, this._nodes, this._potentials[node.id] || [])
   }
 
+  // implementation of the setDistribution interface function.
+  // note that this clears the cache for any potential that is dependendent
+  // either directly or indirectly on this value.
   setDistribution = (name: string, distribution: ICptWithoutParents | ICptWithParents) => {
     const node = this._nodes.find(x => x.name === name)
     if (node) {
@@ -318,6 +139,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
     }
   }
 
+  // implementation of the hasEvidenceFor interface function.
   hasEvidenceFor = (name: string) => {
     const node = this._nodes.find(x => x.name === name)
     if (!node) {
@@ -326,6 +148,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
     return (this._formulas[node.evidenceFunction] as EvidenceFunction).level != null
   }
 
+  // implementation of the getEvidence interface function
   getEvidence = (name: string) => {
     const node = this._nodes.find(x => x.name === name)
     if (!node) {
@@ -336,6 +159,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
     return node.levels[lvl]
   }
 
+  // implementation of the updateEvidence interface function.
   updateEvidence = (evidence: { [name: string]: string}) => {
     Object.keys(evidence).forEach(name => {
       const node = this._nodes.find(x => x.name === name)
@@ -350,11 +174,19 @@ export class LazyPropagationEngine implements IInferenceEngine {
     })
   }
 
+  // Implementation of the setEvidence interface function.
   setEvidence = (evidence: { [name: string]: string}) => {
     this.removeAllEvidence()
     this.updateEvidence(evidence)
   }
 
+  /** Remove any hard evidence for the given variable.   If the
+   * variable has no hard evidence, then the cache will remain
+   * unchanged.   Otherwise, all cached values that depend either directly
+   * or indirectly on the evidence will be cleared.  NOTE:
+   * This could be further improved by using the d-connecteness
+   * properties of the nodes;  this is left for future work.
+   */
   removeEvidence = (name: string) => {
     const node = this._nodes.find(x => x.name === name)
     if (node) {
@@ -366,6 +198,8 @@ export class LazyPropagationEngine implements IInferenceEngine {
     }
   }
 
+  // Remove all evidence from the cache.   Any nodes that depend on
+  // hard evidence will be cleared.
   removeAllEvidence = () =>
     this._nodes.forEach(node => {
       const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
@@ -378,65 +212,114 @@ export class LazyPropagationEngine implements IInferenceEngine {
   /** Given a single node,  infer the probability of an event from the
    * posterior marginal distribution for that node.
    */
-  private inferFromMarginal (nodeId: NodeId, level: number) {
+  private inferFromMarginal (nodeId: NodeId, level: number): number {
     const p = evaluate(this._nodes[nodeId].posteriorMarginal, this._nodes, this._formulas, this._potentials)
-    this._formulas.map(x => x.id).forEach(x => this.showPotential(x))
     return p[level]
   }
 
-  private inferFromJointDistribution (nodeIds: NodeId[], levels: number[]) {
-    console.log(`inferFromJointDistribution not yet implemented.   args: ${nodeIds}, levels: ${levels}`)
-    return 0
+  /** Given a collection of nodes and levels representing an event, construct the
+   * joint probability distribution distribution on the given nodes by creating a
+   * new potential function that "adds the fill in edges" between the cliques
+   * that contain the nodes.   This is expensive, and should be cached to avoid
+   * expensive recomputation.  This is left as future work.
+   */
+  private inferFromJointDistribution (nodeIds: NodeId[]): number {
+    throw new Error(`Computing the joint distribution of nodes ${nodeIds} is not yet supported.   They are in different cliques of the junction tree`)
   }
 
-  private inferFromClique (nodeIds: NodeId[], levels: number[], clique: CliqueId) {
-    console.log(`inferFromClique not yet implemented.   args: ${nodeIds}, levels: ${levels}, clique: ${clique}`)
-    return 0
+  /** Given a collection of nodes and levels representing an event, and a clique
+   * which contains all the given nodes, compute the joint probability of the event
+   * by totalizing all the corresponding rows in the cliques posterior marginal
+   * potential function.
+   */
+  private inferFromClique (nodeIds: NodeId[], levels: number[], cliqueId: CliqueId) {
+    const clique = this._cliques[cliqueId]
+    const formulaId = clique.posterior
+    const formula = this._formulas[formulaId]
+    const idxs = nodeIds.map(id => formula.domain.findIndex(x => x === id))
+    const potential = evaluate(formulaId, this._nodes, this._formulas, this._potentials)
+    let total = 0
+    potential.forEach((p, i) => {
+      const combos = indexToCombination(i, formula.numberOfLevels)
+      if (idxs.every((idx, j) => combos[idx] === levels[j])) total += p
+    })
+    return total
   }
 
+  // Implementation of the infer interface function.  This function
+  // lazily evaluates the requested potential.
   infer = (event: { [name: string]: string}) => {
     const names = Object.keys(event)
+    // If the empty event has been provided, then the probability is
+    // trivially equal to unity.
     if (names.length === 0) return 1
+
+    // If some names have been provided, then we need to find out
+    // which nodes they belong to.
     const idxs = names.map(name => this._nodes.findIndex(node => node.name === name))
 
+    // If there are some names that were provided that do not belong to
+    // any nodes, then the probability of the event is 0.
     if (idxs.some(idx => idx === -1)) return 0
+
+    // If we reached here, all the names are actually variables/nodes in the
+    // Bayes network.   We need to check that all the provided levels are
+    // valid outcomes for each variable.
     const levels: number[] = names.map((name, i) => this._nodes[idxs[i]].levels.findIndex(lvl => lvl === event[name]))
+
+    // In the case where any of the levels that were provided are not valid
+    // outcomes for the corresponding variable, then the probability
+    // is exactly zero.
     if (levels.some(lvl => lvl === -1)) return 0
+
+    // If we reached here, then all the names and levels are valid.
+    // If only one name has been provided, then we are tasked with inferring
+    // the marginal probability for the event.
     if (idxs.length === 1) return this.inferFromMarginal(idxs[0], levels[0])
 
+    // Otherwise, we are being tasked with finding the joint probability
+    // distribution of the event.   In the case where all the variables
+    // are in the same clique, then this can be done with the information
+    // that already exists in the junction tree.
     const cs = this._cliques.filter(clique => idxs.every(idx => clique.domain.includes(idx))).sort((a, b) => a.domain.length - b.domain.length)
+    if (cs.length > 0) return this.inferFromClique(idxs, levels, cs[0].id)
 
-    if (cs.length === 0) return this.inferFromJointDistribution(idxs, levels)
-
-    return this.inferFromClique(idxs, levels, cs[0].id)
+    // Otherwise, we must construct the joint probability distribution
+    // by forcing all the variables into a single clique.
+    // This is left for future work
+    return this.inferFromJointDistribution(idxs)
   }
 
-  showPotential = (id: number) => {
-    const p = this._potentials[id]
-    const f = this._formulas[id]
-
-    let result = ''
-
-    result += `\n${id}: ${f.name}\n`
-
-    if (p == null) return
-
-    if (p != null) {
-      const header: string = f.domain.map(x => x.toString().padStart(4, ' ')).join('') + ' |       '
-      const sep: string = ''.padStart(header.length, '-')
-
-      const rows = p.map((v, i) => {
-        const ps: number[] = indexToCombination(i, f.numberOfLevels)
-        return `${ps.map(x => x.toString().padStart(4, ' ')).join('')} | ${v.toExponential(4)}`
-      })
-
-      result += [header, sep, ...rows].join('\n')
-    }
-    console.log(result)
-  }
-
+  // Implementation of the inferAll interface function.
   inferAll = (options?: IInferAllOptions) => {
-    console.log(`inferAll(${options}) not yet implemented`)
-    return {}
+    const result: INetworkResult = {}
+    this._nodes.forEach(fastnode => {
+      result[fastnode.name] = {}
+      fastnode.levels.forEach(level => {
+        const event: { [level: string]: string} = {}
+        event[fastnode.name] = level
+        const p = this.infer(event)
+        if (options && options.precision != null && options.precision > 0) {
+          result[fastnode.name][level] = roundTo(p, options.precision)
+        } else {
+          result[fastnode.name][level] = p
+        }
+      })
+    })
+    return result
   }
+
+  // This is a back door for obtaining all the private collections in the inference engine.
+  // This function has been provided to aid in writing additonal tests and for persisting
+  // inference engines across instances.
+  toJSON = () => clone({
+    _class: 'LazyCautiousInferenceEngine',
+    _cliques: this._cliques,
+    _nodes: this._nodes,
+    _potentials: this._potentials,
+    _formulas: this._formulas,
+    _connectedComponents: this._connectedComponents,
+    _separators: this._separators,
+    _separatorPotentials: this._separatorPotentials,
+  })
 }

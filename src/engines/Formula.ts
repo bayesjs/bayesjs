@@ -11,8 +11,15 @@ export enum FormulaType {
   REFERENCE
 }
 
+// This type represents the syntax for a well formed potential function.
+// A potential is either the marginal of a potential wrt to some variables,
+// the product of two or more potentials, the prior potential for a node,
+// a (hard) evidence function, a unit potential, or a reference to another
+// potential.
 export type Formula = Marginal | Product | NodePotential | EvidenceFunction | Unit | Reference
 
+// This class implements the AST expression for a unit potential.   Unit
+// potentials are effectively scalar constants.
 export class Unit {
   id = -1;
   kind = FormulaType.UNIT;
@@ -30,6 +37,11 @@ export class Unit {
   };
 }
 
+// This class implements the AST expression for a reference to
+// another potential.   All properties of the reference are
+// the same as the underlying potential.   To ensure well formedness
+// you should use the "reference" smart constructor instead of calling
+// this class's constructor directly.
 export class Reference {
   id: number;
   kind: FormulaType = FormulaType.REFERENCE;
@@ -50,6 +62,8 @@ export class Reference {
   }
 }
 
+// A smart constructor for a reference to another potential.  This
+// handles applying the unit simplification.
 export const reference = (formulaId: FormulaId, formulas: Formula[]) => {
   const deref: Formula = formulas[formulaId]
   switch (deref.kind) {
@@ -60,6 +74,9 @@ export const reference = (formulaId: FormulaId, formulas: Formula[]) => {
   }
 }
 
+// This class implements the Marginal data case for a potential
+// expression.   You should use the "marginalize" smart constructor
+// rather than calling this class's constructor directly.
 export class Marginal {
   id = -1;
   kind: FormulaType = FormulaType.MARGINAL
@@ -84,6 +101,10 @@ export class Marginal {
   }
 }
 
+// A smart constructor for a marginalization of a potential.  This
+// smart constructor handles the cases where marginalization is not
+// required, as well as the case where marginalization produces a
+// unit potential.
 export const marginalize = (sepSet: NodeId[], potential: Formula, formulas: Formula[]) => {
   const dom = potential.domain
   const d: NodeId[] = sepSet.filter(x => dom.includes(x))
@@ -99,6 +120,10 @@ export const marginalize = (sepSet: NodeId[], potential: Formula, formulas: Form
   }
 }
 
+// This class represents the AST data case for the product of two or
+// more (non-unital) potentials.  You should use the "mult" smart
+// constructor instead of calling the constructor for this class
+// directly.
 export class Product {
   id = -1;
   kind: FormulaType = FormulaType.PRODUCT
@@ -124,6 +149,10 @@ export class Product {
   }
 }
 
+// A smart constructor for the product of two or more potentials.
+// this constructor handles the simplifications where the
+// collection is empty or contains only units, and when the
+// product constists of a single non unital term.
 export const mult = (formulas: Formula[]): Formula => {
   const fs = formulas.filter(x => x.kind !== FormulaType.UNIT)
   if (fs.length === 0) return new Unit()
@@ -131,6 +160,8 @@ export const mult = (formulas: Formula[]): Formula => {
   return new Product(fs)
 }
 
+// This class represents an expression for a node's
+// prior potential.
 export class NodePotential {
   id: number;
   kind: FormulaType = FormulaType.NODE_POTENTIAL;

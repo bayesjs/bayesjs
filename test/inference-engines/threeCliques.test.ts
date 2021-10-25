@@ -25,6 +25,8 @@ const infersGiveAFalse = (engine: IInferenceEngine) => {
   const { infer } = engine
   engine.setEvidence({ A: 'F' })
 
+  expect(infer({ A: 'T' }).toFixed(4)).toBe('0.0000')
+  expect(infer({ A: 'F' }).toFixed(4)).toBe('1.0000')
   expect(infer({ B: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ B: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ C: 'T' }).toFixed(4)).toBe('0.1500')
@@ -39,6 +41,8 @@ const infersGiveATrue = (engine: IInferenceEngine) => {
   const { infer } = engine
   engine.setEvidence({ A: 'T' })
 
+  expect(infer({ A: 'T' }).toFixed(4)).toBe('1.0000')
+  expect(infer({ A: 'F' }).toFixed(4)).toBe('0.0000')
   expect(infer({ B: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ B: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ C: 'T' }).toFixed(4)).toBe('0.1500')
@@ -55,6 +59,8 @@ const infersGiveBFalse = (engine: IInferenceEngine) => {
 
   expect(infer({ A: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ A: 'F' }).toFixed(4)).toBe('0.5000')
+  expect(infer({ B: 'T' }).toFixed(4)).toBe('0.0000')
+  expect(infer({ B: 'F' }).toFixed(4)).toBe('1.0000')
   expect(infer({ C: 'T' }).toFixed(4)).toBe('0.2000')
   expect(infer({ C: 'F' }).toFixed(4)).toBe('0.8000')
   expect(infer({ D: 'T' }).toFixed(4)).toBe('0.5000')
@@ -69,6 +75,8 @@ const infersGiveBTrue = (engine: IInferenceEngine) => {
 
   expect(infer({ A: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ A: 'F' }).toFixed(4)).toBe('0.5000')
+  expect(infer({ B: 'T' }).toFixed(4)).toBe('1.0000')
+  expect(infer({ B: 'F' }).toFixed(4)).toBe('0.0000')
   expect(infer({ C: 'T' }).toFixed(4)).toBe('0.1000')
   expect(infer({ C: 'F' }).toFixed(4)).toBe('0.9000')
   expect(infer({ D: 'T' }).toFixed(4)).toBe('0.5000')
@@ -85,6 +93,8 @@ const infersGiveCFalse = (engine: IInferenceEngine) => {
   expect(infer({ A: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ B: 'T' }).toFixed(4)).toBe('0.5294')
   expect(infer({ B: 'F' }).toFixed(4)).toBe('0.4706')
+  expect(infer({ C: 'T' }).toFixed(4)).toBe('0.0000')
+  expect(infer({ C: 'F' }).toFixed(4)).toBe('1.0000')
   expect(infer({ D: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ D: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ E: 'T' }).toFixed(4)).toBe('0.5000')
@@ -99,6 +109,8 @@ const infersGiveCTrue = (engine: IInferenceEngine) => {
   expect(infer({ A: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ B: 'T' }).toFixed(4)).toBe('0.3333')
   expect(infer({ B: 'F' }).toFixed(4)).toBe('0.6667')
+  expect(infer({ C: 'T' }).toFixed(4)).toBe('1.0000')
+  expect(infer({ C: 'F' }).toFixed(4)).toBe('0.0000')
   expect(infer({ D: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ D: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ E: 'T' }).toFixed(4)).toBe('0.5000')
@@ -115,6 +127,8 @@ const infersGiveDFalse = (engine: IInferenceEngine) => {
   expect(infer({ B: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ C: 'T' }).toFixed(4)).toBe('0.1500')
   expect(infer({ C: 'F' }).toFixed(4)).toBe('0.8500')
+  expect(infer({ D: 'T' }).toFixed(4)).toBe('0.0000')
+  expect(infer({ D: 'F' }).toFixed(4)).toBe('1.0000')
   expect(infer({ E: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ E: 'F' }).toFixed(4)).toBe('0.5000')
 }
@@ -129,6 +143,8 @@ const infersGiveDTrue = (engine: IInferenceEngine) => {
   expect(infer({ B: 'F' }).toFixed(4)).toBe('0.5000')
   expect(infer({ C: 'T' }).toFixed(4)).toBe('0.1500')
   expect(infer({ C: 'F' }).toFixed(4)).toBe('0.8500')
+  expect(infer({ D: 'T' }).toFixed(4)).toBe('1.0000')
+  expect(infer({ D: 'F' }).toFixed(4)).toBe('0.0000')
   expect(infer({ E: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ E: 'F' }).toFixed(4)).toBe('0.5000')
 }
@@ -145,6 +161,8 @@ const infersGiveEFalse = (engine: IInferenceEngine) => {
   expect(infer({ C: 'F' }).toFixed(4)).toBe('0.8500')
   expect(infer({ D: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ D: 'F' }).toFixed(4)).toBe('0.5000')
+  expect(infer({ E: 'T' }).toFixed(4)).toBe('0.0000')
+  expect(infer({ E: 'F' }).toFixed(4)).toBe('1.0000')
 }
 
 const infersGiveETrue = (engine: IInferenceEngine) => {
@@ -159,6 +177,8 @@ const infersGiveETrue = (engine: IInferenceEngine) => {
   expect(infer({ C: 'F' }).toFixed(4)).toBe('0.8500')
   expect(infer({ D: 'T' }).toFixed(4)).toBe('0.5000')
   expect(infer({ D: 'F' }).toFixed(4)).toBe('0.5000')
+  expect(infer({ E: 'T' }).toFixed(4)).toBe('1.0000')
+  expect(infer({ E: 'F' }).toFixed(4)).toBe('0.0000')
 }
 
 const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
