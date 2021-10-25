@@ -167,7 +167,7 @@ describe('infers', () => {
     for (const testName of testNames) {
       const method = tests[testName]
 
-      it(`${testName} (Hugin engine)`, () => method(engine))
+      it(`${testName}`, () => method(engine))
     }
   })
 })

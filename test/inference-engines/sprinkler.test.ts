@@ -83,7 +83,7 @@ describe('infers', () => {
     for (const testName of testNames) {
       const method = tests[testName]
 
-      it(`${testName} (hugin engine)`, () => method(engine))
+      it(`${testName}`, () => method(engine))
     }
   })
 })

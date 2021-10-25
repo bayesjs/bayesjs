@@ -1,4 +1,4 @@
-import { ICptWithoutParents, ICptWithParents } from '..'
+import { ICptWithoutParents, ICptWithParents, ICptWithParentsItem } from '..'
 import { FastNode } from './FastNode'
 import { product } from 'ramda'
 import { NodeId } from './common'
@@ -76,23 +76,27 @@ export const fastPotentialToCPT = (nodeId: NodeId, nodes: FastNode[], potential:
     // ICPT With Parents
     const parents = node.parents.map((i: number) => nodes[i])
     const numberOfLevels = parents.map(parent => parent.levels.length)
-    const result = Array(product(numberOfLevels)).fill({ when: {}, then: {} })
-    result.forEach((v, i) => {
-      const combos = indexToCombination(i, numberOfLevels)
+    const result: ICptWithParents = []
+    for (let i = 0; i < product(numberOfLevels); i++) {
+      const v: ICptWithParentsItem = { when: {}, then: {} }
+      result.push(v)
+      const combos: number[] = indexToCombination(i, numberOfLevels)
       combos.forEach((lvlIdx, parentIdx) => {
-        v.when[parents[parentIdx].name] = parents[parentIdx].levels[lvlIdx]
+        const parent = parents[parentIdx]
+        const { levels } = parent
+        const level: string = levels[lvlIdx]
+        v.when[parent.name] = level
       })
       let total = 0
       node.levels.forEach((lvlname, levelIdx) => {
-        const p = potential[i * node.levels.length + levelIdx]
-        total += 0
-        v.then[lvlname] = p
+        total += potential[i * node.levels.length + levelIdx]
       })
-      // If the total is greater than zero, then normalize the results in this row of the cpt.
-      if (total > 0) {
-        Object.keys(v.then).forEach(k => { v.then[k] = v.then[k] / total })
-      }
-    })
+      const div = total > 0 ? total : 1
+      node.levels.forEach((lvlname, levelIdx) => {
+        const p = potential[i * node.levels.length + levelIdx]
+        v.then[lvlname] = p / div
+      })
+    }
     return result
   }
 }

@@ -87,6 +87,8 @@ const infersGiveNoEvidence = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0101')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('0.9900')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('0.0100')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.9703')
 }
 
 const infersGiveNode1True = (engine: IInferenceEngine) => {
@@ -171,6 +173,8 @@ const infersGiveNode1True = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0101')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('0.9900')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('0.0100')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.9800')
 }
 
 const infersGiveNode1False = (engine: IInferenceEngine) => {
@@ -255,6 +259,8 @@ const infersGiveNode1False = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0101')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('0.9900')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('0.0100')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.4901')
 }
 
 const infersGiveNode39True = (engine: IInferenceEngine) => {
@@ -339,6 +345,8 @@ const infersGiveNode39True = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0101')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('1.0000')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('0.0000')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.9703')
 }
 
 const infersGiveNode39False = (engine: IInferenceEngine) => {
@@ -423,6 +431,8 @@ const infersGiveNode39False = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0101')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('0.0000')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('1.0000')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.9703')
 }
 
 const infersGiveNode36True = (engine: IInferenceEngine) => {
@@ -507,6 +517,8 @@ const infersGiveNode36True = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0000')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('0.0000')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('0.0000')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.0000')
 }
 
 const infersGiveNode36False = (engine: IInferenceEngine) => {
@@ -591,6 +603,8 @@ const infersGiveNode36False = (engine: IInferenceEngine) => {
   expect(infer({ node38: 'F' }).toFixed(4)).toBe('0.0101')
   expect(infer({ node39: 'T' }).toFixed(4)).toBe('0.9900')
   expect(infer({ node39: 'F' }).toFixed(4)).toBe('0.0100')
+  // Test of joint probability of nodes in the same clique
+  expect(infer({ node26: 'T', node27: 'T', node25: 'T' }).toFixed(4)).toBe('0.9703')
 }
 
 const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
