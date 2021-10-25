@@ -1,14 +1,13 @@
 import * as roundTo from 'round-to'
 
 import { ICombinations, IInferAllOptions, INetwork, INetworkResult, INode, INodeResult } from '../types'
-import { assoc, clone, identity, ifElse, mergeRight, nthArg, pipe, propEq, reduce } from 'ramda'
+import { assoc, mergeRight, propEq, reduce } from 'ramda'
 import { getNodeStates, getNodesFromNetwork } from './network'
 
 import { infer } from '../inferences/junctionTree'
 import { propIsNotNil } from './fp'
 
 const defaultOptions: IInferAllOptions = {
-  force: false,
   precision: 8,
 }
 
@@ -18,8 +17,9 @@ const inferNodeState = (network: INetwork, nodeId: string, nodeState: string, gi
   if (propIsNotNil(nodeId, given)) {
     return propEq(nodeId, nodeState, given) ? 1 : 0
   }
+  const precision = options.precision ? options.precision : defaultOptions?.precision || 8
 
-  return roundTo(infer(network, { [nodeId]: nodeState }, given), options.precision!)
+  return roundTo(infer(network, { [nodeId]: nodeState }, given), precision)
 }
 
 const inferNode = (network: INetwork, node: INode, given: ICombinations, options: IInferAllOptions) =>
@@ -33,16 +33,10 @@ const inferNode = (network: INetwork, node: INode, given: ICombinations, options
     getNodeStates(node),
   )
 
-const cloneIfForce: <T>(network: T, options: IInferAllOptions) => T = ifElse(
-  pipe(nthArg(1), propEq('force', true)),
-  clone,
-  identity,
-)
-
 export const inferAll = (network: INetwork, given: ICombinations = {}, options: IInferAllOptions = {}): INetworkResult => {
   const finalOptions = getOptions(options)
-  const networkToInfer = cloneIfForce(network, finalOptions)
-  const givenToInfer = cloneIfForce(given, finalOptions)
+  const networkToInfer = network
+  const givenToInfer = given
 
   return reduce(
     (acc, node) => assoc(node.id, inferNode(networkToInfer, node, givenToInfer, finalOptions), acc),
