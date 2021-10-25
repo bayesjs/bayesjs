@@ -145,6 +145,31 @@ const infersAlarmGiveMaryCallsFalse = (engine: IInferenceEngine) => {
   expect(infer({ JOHN_CALLS: 'F' }).toFixed(4)).toBe('0.9494')
 }
 
+const infersSetDistribution = (engine: IInferenceEngine) => {
+  engine.setDistribution('BURGLARY', { T: 0.05, F: 0.95 })
+  const { infer } = engine
+
+  expect(infer({ BURGLARY: 'T' }).toFixed(4)).toBe('0.0178')
+  expect(infer({ BURGLARY: 'F' }).toFixed(4)).toBe('0.9822')
+  expect(infer({ EARTHQUAKE: 'T' }).toFixed(4)).toBe('0.0016')
+  expect(infer({ EARTHQUAKE: 'F' }).toFixed(4)).toBe('0.9984')
+  expect(infer({ ALARM: 'T' }).toFixed(4)).toBe('0.0152')
+  expect(infer({ ALARM: 'F' }).toFixed(4)).toBe('0.9848')
+  expect(infer({ JOHN_CALLS: 'T' }).toFixed(4)).toBe('0.0629')
+  expect(infer({ JOHN_CALLS: 'F' }).toFixed(4)).toBe('0.9371')
+
+  engine.removeAllEvidence()
+
+  expect(infer({ BURGLARY: 'T' }).toFixed(4)).toBe('0.0500')
+  expect(infer({ BURGLARY: 'F' }).toFixed(4)).toBe('0.9500')
+  expect(infer({ EARTHQUAKE: 'T' }).toFixed(4)).toBe('0.0020')
+  expect(infer({ EARTHQUAKE: 'F' }).toFixed(4)).toBe('0.9980')
+  expect(infer({ ALARM: 'T' }).toFixed(4)).toBe('0.0485')
+  expect(infer({ ALARM: 'F' }).toFixed(4)).toBe('0.9515')
+  expect(infer({ JOHN_CALLS: 'T' }).toFixed(4)).toBe('0.0912')
+  expect(infer({ JOHN_CALLS: 'F' }).toFixed(4)).toBe('0.9088')
+}
+
 const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
   'infers give Burglary True': infersAlarmGiveBurglaryTrue,
   'infers give Burglary False': infersAlarmGiveBurglaryFalse,
@@ -156,6 +181,7 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
   'infers give John Calls False': infersAlarmGiveJohnCallsFalse,
   'infers give Mary Calls True': infersAlarmGiveMaryCallsTrue,
   'infers give Mary Calls False': infersAlarmGiveMaryCallsFalse,
+  'infers after set distribution': infersSetDistribution,
 }
 
 describe('infers', () => {
