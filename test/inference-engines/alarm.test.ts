@@ -158,6 +158,14 @@ const infersSetDistribution = (engine: IInferenceEngine) => {
   expect(infer({ JOHN_CALLS: 'T' }).toFixed(4)).toBe('0.0629')
   expect(infer({ JOHN_CALLS: 'F' }).toFixed(4)).toBe('0.9371')
 
+  engine.updateEvidence({ JOHN_CALLS: 'T' })
+  expect(infer({ BURGLARY: 'T' }).toFixed(4)).toBe('0.2133')
+  expect(infer({ BURGLARY: 'F' }).toFixed(4)).toBe('0.7867')
+  expect(infer({ EARTHQUAKE: 'T' }).toFixed(4)).toBe('0.0040')
+  expect(infer({ EARTHQUAKE: 'F' }).toFixed(4)).toBe('0.9960')
+  expect(infer({ ALARM: 'T' }).toFixed(4)).toBe('0.2175')
+  expect(infer({ ALARM: 'F' }).toFixed(4)).toBe('0.7825')
+
   engine.removeAllEvidence()
 
   expect(infer({ BURGLARY: 'T' }).toFixed(4)).toBe('0.0500')
