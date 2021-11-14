@@ -150,13 +150,13 @@ export class LazyPropagationEngine implements IInferenceEngine {
 
   // implementation of the getEvidence interface function
   getEvidence = (name: string) => {
+    let result: string | null = null
     const node = this._nodes.find(x => x.name === name)
-    if (!node) {
-      return false
+    if (node) {
+      const lvl = (this._formulas[node.evidenceFunction] as EvidenceFunction).level
+      if (lvl !== null ) result = node.levels[lvl]
     }
-    const lvl = (this._formulas[node.evidenceFunction] as EvidenceFunction).level
-    if (!lvl) return null
-    return node.levels[lvl]
+    return result
   }
 
   // implementation of the updateEvidence interface function.
