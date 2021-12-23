@@ -4,8 +4,68 @@ import { FastNode } from './FastNode'
 import { FastPotential, combinationToIndex, indexToCombination } from './FastPotential'
 
 import { FormulaId } from './common'
+import { product } from 'ramda'
 
 type MaybeFastPotential = FastPotential | null
+
+/**
+ * Evaluate the formula for taking the product of one or more potentials.  This function is
+ * called by "evaluate" to handle the FormulaType.PRODUCT data case.   This function is O(n)
+ * in the number of elements of the resulting potential.
+ * @param factorsPotentials - the potential functions for the factors
+ * @param factorsDomains - An array of the domains of each of the factors
+ * @param factorNumberOfLevels - An array of the number of levels in each of a factor's domain variables
+ * @param productDomain - The domain of the product
+ * @param productNumberOfLevels -The number of levels in each of the product's domain variables
+ * @param productSize - the number of rows in the product's cpt.  This should be the product of the
+ *   number of levels.
+ * NOTE: This function is pure, and does not make any changes to the nodes, formulas or potentials.
+ *
+ * @example: The product of two potentials A and B prior to normalization is exemplified
+ *  below:
+ *
+ *   | A   |     |     | B   |     |   |  A  |  B  |           |
+ *   | --- | --- |     | --- | --- |   | --- | --- | --------- |
+ *   |  a1 | 0.7 |  x  | b1  | 0.4 | = |  a1 |  b1 | 0.7 * 0.4 |
+ *   |  a2 | 0.2 |     | b2  | 0.6 |   |  a2 |  b1 | 0.2 * 0.4 |
+ *   |  a3 | 0.1 |                     |  a3 |  b1 | 0.1 * 0.4 |
+ *                                     |  a1 |  b2 | 0.7 * 0.6 |
+ *                                     |  a2 |  b2 | 0.2 * 0.6 |
+ *                                     |  a3 |  b2 | 0.1 * 0.6 |
+ */
+export const evaluateProductPure = (factorPotentials: FastPotential[], factorDomains: number[][], factorNumberOfLevels: number[][], productDomain: number[], productNumberOfLevels: number[], productSize: number): FastPotential => {
+  // short cuts for nullary and unary products
+  if (factorPotentials.length === 0) {
+    const result: FastPotential = []
+    return result
+  }
+  const result: number[] = Array(productSize).fill(1)
+  const factsIdxToKeep: number[][] = factorDomains.map((domain: number[]) => domain.map((id: number) => productDomain.findIndex((x: number) => x === id)))
+  let total = 0
+  // Here we iterate over each row of the product potential, multiplicatively
+  // accumulating each of the corresponding values from each factor potential.
+  // This is facilitated by the indexing scheme of the values in the fast
+  // potentials.   Given some combination of the levels we can compute the
+  // index at which the corresponding value occurs.
+  result.forEach((_, rowId) => {
+    // const fs: number[] = []
+    // convert the row in the new potential function to a combination of
+    // variable levels.
+    const combos = indexToCombination(rowId, productNumberOfLevels)
+    // iterate over each factor potential, finding the corresponding entry
+    // and multiplicatively accumulating it into the result.
+    factorPotentials.forEach((vs, factorId) => {
+      const factCombo = factsIdxToKeep[factorId].map((idx: number) => combos[idx])
+      const factId = combinationToIndex(factCombo, factorNumberOfLevels[factorId])
+      result[rowId] *= vs[factId]
+    })
+    total += result[rowId]
+  })
+
+  // Cache the normalized potential function and return it.
+  const normalizedResult = total > 0 ? result.map(v => v / total) : result
+  return normalizedResult
+}
 
 /**
  * Evaluate the formula for taking the product of one or more potentials.  This function is
@@ -56,38 +116,72 @@ const evaluateProduct = (productFormula: Product, nodes: FastNode[], formulas: F
   // If we arrived here, there are at least two factors.  We start by initializing
   // an array for multiplicatively accumulating the potential values
   const factorNumberOfLevels = factorFormulas.map(formula => formula.numberOfLevels)
-  const result: number[] = Array(productFormula.size).fill(1)
-  // Next we need to know how to map the variables (nodes/columns) in the domain
-  // of each factor map to the variables (nodes/columns) in the domain of the
-  // product.   We construct a list where each element is the mapping for a
-  // variable that occurs in a factor to the ordinal position at which it occurs
-  // in the domain of the product.
+  const factorDomains = factorFormulas.map((x: Formula) => x.domain)
   const productDomain = productFormula.domain
-  const factsIdxToKeep: number[][] = factorFormulas.map((factor: Formula) => factor.domain.map((id: number) => productDomain.findIndex((x: number) => x === id)))
-  let total = 0
-  // Here we iterate over each row of the product potential, multiplicatively
-  // accumulating each of the corresponding values from each factor potential.
-  // This is facilitated by the indexing scheme of the values in the fast
-  // potentials.   Given some combination of the levels we can compute the
-  // index at which the corresponding value occurs.
-  result.forEach((_, rowId) => {
-    // const fs: number[] = []
-    // convert the row in the new potential function to a combination of
-    // variable levels.
-    const combos = indexToCombination(rowId, productFormula.numberOfLevels)
-    // iterate over each factor potential, finding the corresponding entry
-    // and multiplicatively accumulating it into the result.
-    factorPotentials.forEach((vs, factorId) => {
-      const factCombo = factsIdxToKeep[factorId].map((idx: number) => combos[idx])
-      const factId = combinationToIndex(factCombo, factorNumberOfLevels[factorId])
-      result[rowId] *= vs[factId]
-    })
-    total += result[rowId]
-  })
+  const productNumberOfLevels = productDomain.map(i => nodes[i].levels.length)
 
-  // Cache the normalized potential function and return it.
+  const result = evaluateProductPure(
+    factorPotentials,
+    factorDomains,
+    factorNumberOfLevels,
+    productDomain,
+    productNumberOfLevels,
+    product(productNumberOfLevels),
+  )
+  potentials[productFormula.id] = result
+  return result
+}
+
+/**
+ * Marginalize a potential function directly (no formulas).  This function is called by "evaluate"
+ * to handle the FormulaType.MARGINAL data case.   This function is O(n) in the number of
+ * elements of the original potential.
+ * @param innerPotential - the potential function to marginalize
+ * @param innerDomain - the domain of the potential function being marginalized
+ * @param innerNumberOfLevels - The number of levels of each of the variables occuring in the
+ *   domain of the inner potential
+ * @param marginalDomain - the domain of the potential function after marginalization.   It
+ *   must contain a distinct subset of the elements of the inner potential function's domain
+ *   but can be in any order.
+ * @param marginalNumberOfLevels - the number of levels in each of the variables occuring in the
+ *   domain of the marginal.
+ * @param marginalSize - The number of elements in the CPT of the potential function.   This should
+ *   be the product of the marginalNumberOfLevels.
+ * NOTE: This function is pure, and does not mutate any of the formulas or potentials.
+ *
+ * @example: The result of marginalization of a potential over {B} prior to normalization
+ *  is exemplified below:
+ *
+ *        |  A  |  B  |           |    | A   |                   |
+ *  ----  | --- | --- | --------- |    | --- | ----------------- |
+ *  \     |  a1 |  b1 | 0.7 * 0.4 |    |  a1 | 0.7 * (0.4 + 0.6) |
+ *    \   |  a2 |  b1 | 0.2 * 0.4 |    |  a2 | 0.2 * (0.4 + 0.6) |
+ *    /   |  a3 |  b1 | 0.1 * 0.4 |  = |  a3 | 0.1 * (0.4 + 0.6) |
+ *  /     |  a1 |  b2 | 0.7 * 0.6 |
+ *  ----  |  a2 |  b2 | 0.2 * 0.6 |
+ *    {B} |  a3 |  b2 | 0.1 * 0.6 |
+ *
+ */
+
+export function evaluateMarginalPure (innerPotential: FastPotential, innerDomain: number[], innerNumberOfLevels: number[], marginalDomain: number[], marginalNumberOfLevels: number[], marginalSize: number): FastPotential {
+  const IdxsToKeep: number[] = marginalDomain.map(x => innerDomain.findIndex(y => x === y))
+  const result: number[] = Array(marginalSize).fill(0)
+  let total = 0
+  // For each value in the old potential function, we convert its index to
+  // the combinations (levels) of the variables.   We then filter out the
+  // columns that don't appear in the new potential and reorder the
+  // remaining combinations so that they match the order of the nodes in the
+  // domain of the new potential function.  Given this new set of combinations
+  // we can compute the correct index in the resultant potential and add
+  // the old potential's value to that element.
+  innerPotential.forEach((v, i) => {
+    const combos = indexToCombination(i, innerNumberOfLevels)
+    const idx = combinationToIndex(IdxsToKeep.map(idx => combos[idx]), marginalNumberOfLevels)
+    result[idx] += v
+    total += v
+  })
+  // Normalize the potential so that it is a probability distribution.
   const normalizedResult = total > 0 ? result.map(v => v / total) : result
-  potentials[productFormula.id] = normalizedResult
   return normalizedResult
 }
 
@@ -128,38 +222,14 @@ const evaluateMarginal = (marginalFormula: Marginal, nodes: FastNode[], formulas
   const innerFormula = formulas[marginalFormula.potential]
   // Marginalization will remove zero or more variables (nodes) from the distribution.
   // We need to know which nodes are retained after the marginalization.
-  const { domain: innerDomain, numberOfLevels: innerNumbrerOfLevels } = innerFormula
+  const { domain: innerDomain, numberOfLevels: innerNumberOfLevels } = innerFormula
   const { domain: marginalDomain, size: marginalSize, numberOfLevels: marginalNumberOfLevels } = marginalFormula
 
-  // If we got here, then one or more nodes need to be marginalized from the given
-  // potential (possibly just reordering of the entries in the potential array).
-  // The resulting potential function should be the result of
-  // additively accumulating the potentials grouped on like values of the remaining
-  // nodes.   Because the fast potential structure uses an integer indexing scheme
-  // which encodes the values of the variables, we need to know how to convert between
-  // indices in the original potential function and the result.  We start by
-  // populating an empty array with the correct number of entries for  the new
-  // potential function.
-  const IdxsToKeep: number[] = marginalDomain.map(x => innerDomain.findIndex(y => x === y))
-  const result: number[] = Array(marginalSize).fill(0)
-  let total = 0
-  // For each value in the old potential function, we convert its index to
-  // the combinations (levels) of the variables.   We then filter out the
-  // columns that don't appear in the new potential and reorder the
-  // remaining combinations so that they match the order of the nodes in the
-  // domain of the new potential function.  Given this new set of combinations
-  // we can compute the correct index in the resultant potential and add
-  // the old potential's value to that element.
-  innerPotential.forEach((v, i) => {
-    const combos = indexToCombination(i, innerNumbrerOfLevels)
-    const idx = combinationToIndex(IdxsToKeep.map(idx => combos[idx]), marginalNumberOfLevels)
-    result[idx] += v
-    total += v
-  })
-  // Normalize the potential so that it is a probability distribution.
-  const normalizedResult = total > 0 ? result.map(v => v / total) : result
-  potentials[marginalFormula.id] = normalizedResult
-  return normalizedResult
+  const result = evaluateMarginalPure(
+    innerPotential, innerDomain, innerNumberOfLevels, marginalDomain, marginalNumberOfLevels, marginalSize,
+  )
+  potentials[marginalFormula.id] = result
+  return result
 }
 
 const evaluateEvidence = (evidenceFunction: EvidenceFunction, potentials: MaybeFastPotential[]): FastPotential => {
@@ -227,7 +297,7 @@ export const evaluate = (formulaId: FormulaId, nodes: FastNode[], formulas: Form
       case FormulaType.UNIT:
         // Note, there is only one implementation of the unit potential function.
         return []
-      case FormulaType.NODE_POTENTIAL: throw new Error(`The node potential function for node ${nodes[formulaId]}} was not provided`)
+      case FormulaType.NODE_POTENTIAL: throw new Error(`The node potential function for node ${nodes[formulaId].name} was not provided`)
     }
   }
 }

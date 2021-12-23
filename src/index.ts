@@ -14,4 +14,4 @@ export * from './builder'
 export const { infer } = junctionTree
 export * from './types'
 export * from './utils/inferAll'
-export { LazyPropagationEngine as InferenceEngine } from './engines'
+export { LazyPropagationEngine as InferenceEngine, Distribution } from './engines'

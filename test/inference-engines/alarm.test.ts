@@ -4,6 +4,7 @@ import { IInferenceEngine } from '../../src/types'
 import { allNodes } from '../../models/alarm'
 import { createNetwork } from '../../src/utils'
 import { InferenceEngine } from '../../src/index'
+import { fromCPT } from '../../src/engines'
 
 const infersAlarmGiveBurglaryTrue = (engine: IInferenceEngine) => {
   engine.setEvidence({ BURGLARY: 'T' })
@@ -146,7 +147,7 @@ const infersAlarmGiveMaryCallsFalse = (engine: IInferenceEngine) => {
 }
 
 const infersSetDistribution = (engine: IInferenceEngine) => {
-  engine.setDistribution('BURGLARY', { T: 0.05, F: 0.95 })
+  engine.setDistribution(fromCPT('BURGLARY', { T: 0.05, F: 0.95 }))
   const { infer } = engine
 
   expect(infer({ BURGLARY: 'T' }).toFixed(4)).toBe('0.0178')

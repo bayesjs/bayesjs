@@ -1,4 +1,5 @@
-import { INetworkResult, ICombinations, ICptWithParents, ICptWithoutParents, IInferAllOptions } from '.'
+import { INetworkResult, ICombinations, IInferAllOptions } from '.'
+import { Distribution } from '../engines'
 
 /**
  * An inference engine is a self contained structure for performing inferences on
@@ -39,11 +40,11 @@ export interface IInferenceEngine {
   // Replace the probability distribution for a given variable with a clone of the provided
   // cpt.   NOTE: If the probability distribution does not match the levels or
   // parents of the variable, the function must throw an errror.
-  setDistribution: (name: string, cpt: ICptWithParents | ICptWithoutParents) => void;
+  setDistribution: (distribution: Distribution) => void;
 
   // Query the underlying Bayes network and return a clone of the probability
   // distribution for the given variable.
-  getDistribution: (name: string) => ICptWithParents | ICptWithoutParents | null;
+  getDistribution: (name: string) => Distribution;
 
   // Test if evidence has been provided for the given variable.
   hasEvidenceFor: (name: string) => boolean;

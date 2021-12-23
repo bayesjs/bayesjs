@@ -1,14 +1,76 @@
 import createCliques from '../inferences/junctionTree/create-cliques'
 import { createICliqueFactors } from '../inferences/junctionTree/create-initial-potentials'
 import { getConnectedComponents } from '../utils/connected-components'
-import { cptToFastPotential, FastPotential, indexToCombination } from './FastPotential'
+import { FastPotential, indexToCombination } from './FastPotential'
 import { EvidenceFunction, Formula, FormulaType, marginalize, mult, NodePotential, reference } from './Formula'
 import { CliqueId, NodeId, ConnectedComponentId } from './common'
 import { IClique, ICliqueFactors, IGraph, INetwork } from '..'
 import { FastNode } from './FastNode'
 import { FastClique } from './FastClique'
 import { messageName } from './symbolic-propagation'
-import { reduce } from 'ramda'
+import { reduce, product, sum } from 'ramda'
+import { ICptWithParentsItem, ICptWithoutParents, ICptWithParents } from '../types'
+import { Distribution, fromCPT } from './Distribution'
+import { evaluateMarginalPure } from './evaluation'
+
+export function setDistribution (distribution: Distribution, nodes: FastNode[], potentials: (FastPotential|null)[]): NodeId {
+  const [headVar, ...others] = distribution.getHeadVariables()
+  const { name } = headVar
+  const throwErr = (reason: string) => { throw new Error(`Cannot set the distribution for ${name}.  ` + reason) }
+
+  if (others.length > 0) throwErr('It has more than one head variable.')
+  const parents = distribution.getParentVariables()
+  if (!nodes.find(x => x.name === name)) throwErr('The variable does not exist in the distribution')
+  const node = nodes.find(x => x.name === name) as FastNode
+  const expectedParents = node.parents.map(i => ({ name: nodes[i].name, levels: nodes[i].levels }))
+
+  // Add any missing levels of the head variable
+  node.levels.forEach(level => {
+    if (!headVar.levels.includes(level)) distribution.addLevel(name, level)
+  })
+  // Remove any extra levels of the head variable
+  headVar.levels.forEach(level => {
+    if (!node.levels.includes(level)) distribution.removeLevel(name, level)
+  })
+  // Remove any extra parent variables, and add/remove levels to those that do exist
+  parents.forEach(parent => {
+    const expectedParent = expectedParents.find(x => x.name === parent.name)
+    if (!expectedParent) {
+      // The parent does not exist in the engine.  Remove it by marginalizing the distribution
+      distribution.removeVariable(parent.name)
+    } else {
+    // Add any missing levels of the parent variable
+      expectedParent.levels.forEach(level => {
+        if (!parent.levels.includes(level)) distribution.addLevel(parent.name, level)
+      })
+      // Remove any extra levels of the head variable
+      parent.levels.forEach(level => {
+        if (!expectedParent.levels.includes(level)) distribution.removeLevel(parent.name, level)
+      })
+    }
+  })
+
+  // Add any missing parent variables
+  expectedParents.forEach(expectedParent => {
+    const parent = parents.find(x => x.name === expectedParent.name)
+    if (!parent) {
+      distribution.addParentVariable(expectedParent.name, expectedParent.levels)
+    }
+  })
+
+  // Marginalize the resulting potential to put the variables into the correct order
+  const innerPotential = distribution.toJSON().potentialFunction
+  const variableNames = [name, ...expectedParents.map(x => x.name)]
+  const domain = [...Array(expectedParents.length + 1).keys()]
+  domain.push(domain.length)
+  const numberOfLevels = [headVar.levels.length, ...expectedParents.map(expectedParent => expectedParent.levels.length)]
+  const innerDomain = [0, ...parents.map(x => variableNames.indexOf(x.name))]
+  const innerNumberOfLevels = innerDomain.map(i => numberOfLevels[i])
+  const size = product(numberOfLevels)
+
+  potentials[node.id] = evaluateMarginalPure(innerPotential, innerDomain, innerNumberOfLevels, domain, numberOfLevels, size)
+  return node.id
+}
 
 /** Given a formula and the corresponding fast potential, create a nice
  * human readable representation of the potential using a tabular format.
@@ -50,10 +112,18 @@ export type NetworkInfo = {
 /** Given a INetwork, compute the information required to construct a
  * inference engine.
  */
-export const getNetworkInfo = (network: INetwork): NetworkInfo => {
-  const { cliques, sepSets, junctionTree } = createCliques(network)
+export const getNetworkInfo = (network: { [name: string]: {
+  id: string;
+  states: string[];
+  parents: string[];
+};}): NetworkInfo => {
+  const inet: INetwork = {}
+  Object.entries(network).forEach(([k, v]) => {
+    inet[k] = { ...v, cpt: ([] as ICptWithParentsItem[]) }
+  })
+  const { cliques, sepSets, junctionTree } = createCliques(inet)
 
-  const factorMap = createICliqueFactors(cliques, network)
+  const factorMap = createICliqueFactors(cliques, inet)
   const ccs = getConnectedComponents(junctionTree)
 
   const numberOfConnectedComponents = ccs.length
@@ -163,7 +233,11 @@ export const upsertFormula = (formulas: Formula[], formulaLookup: { [name: strin
   }
 }
 
-export function initializeNodes (network: INetwork, nodeMap: { [name: string]: NodeId }, upsert: (formula: Formula) => Formula, nodes: FastNode[]) {
+export function initializeNodes (network: { [name: string]: {
+  id: string;
+  states: string[];
+  parents: string[];
+};}, nodeMap: { [name: string]: NodeId }, upsert: (formula: Formula) => Formula, nodes: FastNode[]) {
   // Initialize the collection of nodes using the fast integer indexing.
 // note that some of the fields (children, cliques, factorAssignedTo)
 // cannot be populated on the initial pass.
@@ -298,8 +372,38 @@ export function initializePosteriorNodePotentials (upsert: (formula: Formula) =>
 
 // Convert the cpts for each variable into a potential function
 // and cache at the same index as the node.
-export function initializePriorNodePotentials (network: INetwork, potentials: FastPotential[], fastNodes: FastNode[]) {
-  fastNodes.forEach((node, i) => {
-    potentials[i] = cptToFastPotential(node, network[node.name].cpt, fastNodes)
+export function initializePriorNodePotentials (network: {[name: string]: {
+  id: string;
+  states: string[];
+  parents: string[];
+  potentialFunction?: FastPotential;
+  distribution?: Distribution;
+  cpt?: ICptWithParents | ICptWithoutParents;
+};}, potentials: FastPotential[], fastNodes: FastNode[]) {
+  fastNodes.forEach(node => {
+    // if a distribution was provided, then use that.
+    if (network[node.name].distribution) {
+      setDistribution(network[node.name].distribution as Distribution, fastNodes, potentials)
+      return
+    }
+    // if a CPT was provided, then convert it to a distribution and add it.
+    if (network[node.name].cpt) {
+      const dist = fromCPT(node.name, network[node.name].cpt as ICptWithParents | ICptWithoutParents)
+      // console.warn('The use of ICptWithParents or ICptWithoutParents is deprecated and will be removed in a future version.   Replace with Distribution objects to avoid this warning.')
+      setDistribution(dist, fastNodes, potentials)
+      return
+    }
+    const numberOfLevels = [node.levels.length, ...node.parents.map(j => fastNodes[j].levels.length)]
+    // otherwise, construct the uniform distribution.
+    if (network[node.name].potentialFunction) {
+      const p = network[node.name].potentialFunction as FastPotential
+      if (p.length !== product(numberOfLevels)) throw new Error(`Cannot set distribution for ${node.name}.   It has the wrong number of elements`)
+      if (p.some(x => x < 0)) throw new Error(`Cannot set distribution for ${node.name}.   Some of the potentials are less than zero.`)
+      const total = sum(p)
+      if (total === 0) throw new Error(`Cannot set distribution for ${node.name}.   There are no non-zero potentials.`)
+      potentials[node.id] = p.map(x => x / total)
+      return
+    }
+    potentials[node.id] = Array(product(numberOfLevels)).fill(1 / product(numberOfLevels))
   })
 }
