@@ -1086,7 +1086,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node19', 'node14'], ['node10'], 4)).toEqual(expected)
     })
   })
-  describe('should infer the correct liklihood for a distribution', () => {
+  fdescribe('should infer the correct liklihood for a distribution', () => {
     it('of one head variable', () => {
       const observed = infer({ node11: 'T' }, {}, 4)
       expect(observed).toEqual(0.9900)
@@ -1131,7 +1131,29 @@ describe('getDistribution', () => {
       const observed = infer({ node1: 'T' }, { node2: 'Z' }, 4)
       expect(observed).toEqual(0)
     })
+    fit('it should infer the correct probability for a junction forest.', () => {
+      const disconnected = new InferenceEngine({
+        A: { id: 'A', states: ['T', 'F'], parents: [], potentialFunction: [0.1, 0.9] },
+        B: { id: 'B', states: ['T', 'F'], parents: ['A'], potentialFunction: [0.2, 0.3, 0.3, 0.2] },
+        C: { id: 'C', states: ['T', 'F'], parents: [], potentialFunction: [0.2, 0.8] },
+        D: { id: 'D', states: ['T', 'F'], parents: ['C'], potentialFunction: [0.35, 0.15, 0.15, 0.35] },
+        E: { id: 'E', states: ['T', 'F'], parents: [], potentialFunction: [0.6, 0.4] },
+        F: { id: 'F', states: ['T', 'F'], parents: ['E'], potentialFunction: [0.45, 0.05, 0.05, 0.45] },
+      })
+      let dist = disconnected.getJointDistribution(['A', 'D'], [])
+      let json = dist.toJSON()
+      let observed = json.potentialFunction
+      let expected = [0.038, 0.342, 0.062, 0.558]
+      expect(observed.map(x => Number.parseFloat(x.toPrecision(4)))).toEqual(expected)
+
+      dist = disconnected.getJointDistribution(['E', 'C', 'B'], [])
+      json = dist.toJSON()
+      observed = json.potentialFunction
+      expected = [0.0696, 0.0464, 0.2784, 0.1856, 0.0504, 0.0336, 0.2016, 0.1344]
+      expect(observed.map(x => Number.parseFloat(x.toPrecision(4)))).toEqual(expected)
+    })
   })
+
   describe('The constructed distribution', () => {
     it('should have the correct head variables', () => {
       const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])

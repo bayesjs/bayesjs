@@ -4,13 +4,20 @@ import { Formula } from './Formula'
 import { uniq, product, union, intersection } from 'ramda'
 import { evaluateMarginalPure, evaluate, evaluateProductPure } from './evaluation'
 import { FastNode } from './FastNode'
-import { FormulaId } from './common'
 
-// find a minimum set of nodes in the junction tree that covers all the variables of the
-// joint distribution.  if S is the collection of varibles in the join, we do this by
-// successivly pruning any leaf nodes A that are connected to a B for which the selection
-// set (A intersect B) contains all the variables of A that are in S.
-function minimumSpanningTree (cliques: FastClique[], separators: number[][], variables: number[]): { cliques: number[]; separators: number[]} {
+/** find a minimum set of nodes in the junction tree that covers all the variables of the
+joint distribution.  if S is the collection of varibles in the join, we do this by
+successivly pruning any leaf nodes A that are connected to a B for which the selection
+set (A intersect B) contains all the variables of A that are in S.
+
+@param cliques: all the cliques in the junction tree
+@param variables: the variables in the arbitrary join
+
+@returns: An object containing all the cliques in the spanning forest and the
+  separator sets between them.
+*/
+
+function minimumSpanningTree (cliques: FastClique[], variables: number[]): { cliques: number[]; separators: number[]} {
   type TreeNode = { id: number; domain: number[]; neighbors: number[]}
   const leavesOfSpanningTree: (TreeNode | null)[] = cliques.map((c, i) => ({
     id: i,
@@ -18,13 +25,13 @@ function minimumSpanningTree (cliques: FastClique[], separators: number[][], var
     neighbors: [...c.neighbors],
   }))
   const nodeQueue = leavesOfSpanningTree.filter(c => c && c.neighbors.length === 1)
-
   while (nodeQueue.length > 0) {
     const node: TreeNode = nodeQueue.pop() as TreeNode
     const neighbor = leavesOfSpanningTree[node.neighbors[0]] as TreeNode
     const diff = node.domain.filter(x => variables.includes(x))
+    // If the neighbor has all of the variables of interest that are in the current
+    // node, then we can prune the current node.
     if (diff.length === 0 || (neighbor && diff.every(x => neighbor.domain.includes(x)))) {
-      // The node can be removed from the tree.
       leavesOfSpanningTree[node.id] = null
       neighbor.neighbors = neighbor.neighbors.filter(x => x !== node.id)
       if (neighbor.neighbors.length === 1) nodeQueue.push(neighbor)
@@ -44,7 +51,7 @@ function minimumSpanningTree (cliques: FastClique[], separators: number[][], var
   }
 }
 
-export function arbitraryJoin (nodes: FastNode[], cliques: FastClique[], separators: number[][], separatorPotentials: FormulaId[], formulas: Formula[], potentialFunctions: (FastPotential|null)[], headVariables: number[], parentVariables: number[]): FastPotential {
+export function arbitraryJoin (nodes: FastNode[], cliques: FastClique[], separators: number[][], formulas: Formula[], potentialFunctions: (FastPotential|null)[], headVariables: number[], parentVariables: number[]): FastPotential {
   const distinctHeadVariables = uniq(headVariables)
   const distinctParentVariables = uniq(parentVariables)
 
@@ -57,10 +64,9 @@ export function arbitraryJoin (nodes: FastNode[], cliques: FastClique[], separat
   if (distinctHeadVariables.some(x => x < 0 || x >= nodes.length)) throwErr('Some of the head variables do not exist in the network.')
   if (distinctParentVariables.some(x => x < 0 || x >= nodes.length)) throwErr('Some of the parent variables do not exist in the network.')
   // BEGIN ALGORITHM
-
   const resultDomain = headVariables.concat(parentVariables)
   const resultNumberOfLevels = resultDomain.map(i => nodes[i].levels.length)
-  const spanningTree = minimumSpanningTree(cliques, separators, resultDomain)
+  const spanningTree = minimumSpanningTree(cliques, resultDomain)
 
   spanningTree.cliques.forEach(i => evaluate(cliques[i].posterior, nodes, formulas, potentialFunctions))
 

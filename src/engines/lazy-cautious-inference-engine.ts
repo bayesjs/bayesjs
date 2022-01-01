@@ -146,7 +146,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const parentIdxs: number[] = parentVariables.map(s => this._nodes.findIndex(node => node.name === s))
     const headIdxs: number[] = headVariables.map(s => this._nodes.findIndex(node => node.name === s))
     this._formulas.forEach(f => evaluate(f.id, this._nodes, this._formulas, this._potentials))
-    const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._separators, this._separatorPotentials, this._formulas, this._potentials, headIdxs, parentIdxs)
+    const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._separators, this._formulas, this._potentials, headIdxs, parentIdxs)
     return new Distribution(headVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], parentVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], potentialFunction)
   }
 
