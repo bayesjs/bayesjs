@@ -3,9 +3,6 @@ import * as expect from 'expect'
 import { allNodes } from '../../models/huge-network'
 import { createNetwork } from '../../src/utils'
 import { InferenceEngine } from '../../src/index'
-import { evaluateMarginalPure } from '../../src/engines/evaluation'
-import { difference, product, sum } from 'ramda'
-import { fromCPT } from '../../src/engines'
 
 const network = createNetwork(...allNodes)
 const engine = new InferenceEngine(network)
@@ -15,15 +12,10 @@ function getPotentialFunction (headVariables: string[], parentVariables: string[
   return potential.map(x => Number.parseFloat(x.toPrecision(precision)))
 }
 
-function infer (event: { [name: string]: string}, evidence: { [name: string]: string}, precision: number) {
-  const dist = engine.getJointDistribution(Object.keys(event), Object.keys(evidence))
-  return Number.parseFloat(dist.infer(event, evidence).toPrecision(precision))
-}
-
 // NOTE: Expected values were computed using R bnLearn and grain packages
 // and rounded to 4 decimals of precision.
-describe('getDistribution', () => {
-  it('should return the marginal for single node joins', () => {
+describe('getJointDistribution', () => {
+  it('should construct the correct potential function for single node joins', () => {
     let expected: number[] = [0.9802, 0.0198]
     expect(getPotentialFunction(['node1'], [], 4)).toEqual(expected)
     expected = [0.99, 0.01]
@@ -69,7 +61,7 @@ describe('getDistribution', () => {
     expected = [0.0, 1.0]
     expect(getPotentialFunction(['node36'], [], 4)).toEqual(expected)
   })
-  describe('should return correct joint for two nodes in the same clique', () => {
+  describe('should construct the correct potential function for two nodes in the same clique', () => {
     it('clique 0', () => {
       const expected = [0.9801, 0.0099, 0.009802, 0.000198]
       expect(getPotentialFunction(['node10', 'node11'], [], 4)).toEqual(expected)
@@ -127,7 +119,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node1', 'node37'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for join of two nodes in adjacent cliques', () => {
+  describe('should construct the correct potential function for join of two nodes in adjacent cliques', () => {
     it('cliques 0 - 4', () => {
       const expected: number[] = [0.9800, 0.009898, 0.009997, 0.0001019]
       expect(getPotentialFunction(['node11', 'node38'], [], 4)).toEqual(expected)
@@ -185,7 +177,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node1', 'node36'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for join of two non-adjacent cliques with 2 degrees of separation', () => {
+  describe('should construct the correct potential function for join of two non-adjacent cliques with 2 degrees of separation', () => {
     it('cliques 0 - 14', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node3', 'node11'], [], 4)).toEqual(expected)
@@ -393,7 +385,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node26', 'node36'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for join of two non-adjacent cliques with 3 degrees of separation', () => {
+  describe('should construct the correct potential function for join of two non-adjacent cliques with 3 degrees of separation', () => {
     it('cliques 0 - 13', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node11', 'node16'], [], 4)).toEqual(expected)
@@ -475,7 +467,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node16', 'node3'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for join of two non-adjacent cliques with 4 degrees of separation', () => {
+  describe('should construct the correct potential function for join of two non-adjacent cliques with 4 degrees of separation', () => {
     it('cliques 0 - 1', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node11', 'node14'], [], 4)).toEqual(expected)
@@ -553,7 +545,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node36', 'node3'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for join of two non-adjacent cliques with 5 degrees of separation', () => {
+  describe('should construct the correct potential function for join of two non-adjacent cliques with 5 degrees of separation', () => {
     it('cliques 0 - 10', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node11', 'node19'], [], 4)).toEqual(expected)
@@ -563,7 +555,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node19', 'node3'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for join of three nodes', () => {
+  describe('should construct the correct potential function for join of three nodes', () => {
     it('from the same clique', () => {
       const expected: number[] = [0.9703, 0.009801, 0.009801, 0.000099, 0.009801, 0.000099, 0.000099, 0.000001]
       expect(getPotentialFunction(['node5', 'node4', 'node3'], [], 4)).toEqual(expected)
@@ -577,7 +569,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node19', 'node14', 'node10'], [], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for conditional distribution of two nodes', () => {
+  describe('should should construct the correct potential function for conditional distribution of two nodes', () => {
     it('clique 0', () => {
       const expected = [0.9801, 0.0099, 0.009802, 0.000198]
       expect(getPotentialFunction(['node10'], ['node11'], 4)).toEqual(expected)
@@ -635,7 +627,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node1'], ['node37'], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for conditional distribution of two nodes from adjacent cliques', () => {
+  describe('should construct the correct potential function for conditional distribution of two nodes from adjacent cliques', () => {
     it('cliques 0 - 4', () => {
       const expected: number[] = [0.9800, 0.009898, 0.009997, 0.0001019]
       expect(getPotentialFunction(['node11'], ['node38'], 4)).toEqual(expected)
@@ -693,7 +685,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node1'], ['node36'], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for conditional distribution of two nodes from non-adjacent cliques with 2 degrees of separation', () => {
+  describe('should construct the correct potential function for conditional distribution of two nodes from non-adjacent cliques with 2 degrees of separation', () => {
     it('cliques 0 - 14', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node3'], ['node11'], 4)).toEqual(expected)
@@ -902,7 +894,7 @@ describe('getDistribution', () => {
     })
   })
 
-  describe('should return correct potential function for conditional distribution of two non-adjacent cliques with 3 degrees of separation', () => {
+  describe('should construct the correct potential function for conditional distribution of two non-adjacent cliques with 3 degrees of separation', () => {
     it('cliques 0 - 13', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node11'], ['node16'], 4)).toEqual(expected)
@@ -984,7 +976,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node16'], ['node3'], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for conditional distribution of two non-adjacent cliques with 4 degrees of separation', () => {
+  describe('should construct the correct potential function for conditional distribution of two non-adjacent cliques with 4 degrees of separation', () => {
     it('cliques 0 - 1', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node11'], ['node14'], 4)).toEqual(expected)
@@ -1062,7 +1054,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node36'], ['node3'], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for conditional distribution of two non-adjacent cliques with 5 degrees of separation', () => {
+  describe('should construct the correct potential function for conditional distribution of two non-adjacent cliques with 5 degrees of separation', () => {
     it('cliques 0 - 10', () => {
       const expected: number[] = [0.9801, 0.0099, 0.0099, 0.0001]
       expect(getPotentialFunction(['node11'], ['node19'], 4)).toEqual(expected)
@@ -1072,7 +1064,7 @@ describe('getDistribution', () => {
       expect(getPotentialFunction(['node19'], ['node3'], 4)).toEqual(expected)
     })
   })
-  describe('should return correct potential function for joint distribution conditioned on a variable', () => {
+  describe('should construct the correct potential function for joint distribution conditioned on a variable', () => {
     it('from the same clique', () => {
       const expected: number[] = [0.9703, 0.009801, 0.009801, 0.000099, 0.009801, 0.000099, 0.000099, 0.000001]
       expect(getPotentialFunction(['node5', 'node4'], ['node3'], 4)).toEqual(expected)
@@ -1084,404 +1076,6 @@ describe('getDistribution', () => {
     it('from cliques with 2 degrees of separation', () => {
       const expected: number[] = [0.9702, 0.0098, 0.0098, 0.00009899, 0.009897, 0.00009997, 0.00009997, 0.00000101]
       expect(getPotentialFunction(['node19', 'node14'], ['node10'], 4)).toEqual(expected)
-    })
-  })
-  fdescribe('should infer the correct liklihood for a distribution', () => {
-    it('of one head variable', () => {
-      const observed = infer({ node11: 'T' }, {}, 4)
-      expect(observed).toEqual(0.9900)
-    })
-    it('of two head variables', () => {
-      const observed = infer({ node11: 'T', node22: 'F' }, {}, 4)
-      expect(observed).toEqual(0.0099)
-    })
-    it('of one head variable and one parent variable', () => {
-      const observed = infer({ node11: 'T' }, { node22: 'F' }, 4)
-      expect(observed).toEqual(0.99)
-    })
-    it('of one head variable and two parent variables', () => {
-      const observed = infer({ node11: 'T' }, { node22: 'F', node31: 'F' }, 4)
-      expect(observed).toEqual(0.99)
-    })
-    it('of two head variable and one parent variables', () => {
-      const observed = infer({ node11: 'T', node22: 'F' }, { node31: 'F' }, 4)
-      expect(observed).toEqual(0.0099)
-    })
-    it('of three head variables and one parent variables', () => {
-      const observed = infer({ node11: 'T', node22: 'F', node16: 'F' }, { node31: 'F' }, 4)
-      expect(observed).toEqual(0.000099)
-    })
-    it('of two head variables and two parent variables', () => {
-      const observed = infer({ node11: 'T', node22: 'F' }, { node16: 'F', node31: 'F' }, 4)
-      expect(observed).toEqual(0.0099)
-    })
-    it('infer should throw an error when not all head variables are provided', () => {
-      const dist = engine.getJointDistribution(['node1', 'node2'], ['node3'])
-      expect(() => dist.infer({ node1: 'T' }, { node3: 'F' })).toThrow()
-    })
-    it('infer should throw an error when not all parent variables are provided', () => {
-      const dist = engine.getJointDistribution(['node1', 'node2'], ['node3'])
-      expect(() => dist.infer({ node1: 'T', node2: 'F' })).toThrow()
-    })
-    it('infer should return zero when a invalid level is provided for a head variable', () => {
-      const observed = infer({ node1: 'Z' }, { node2: 'T' }, 4)
-      expect(observed).toEqual(0)
-    })
-    it('infer should return zero when a invalid level is provided for a parent variable', () => {
-      const observed = infer({ node1: 'T' }, { node2: 'Z' }, 4)
-      expect(observed).toEqual(0)
-    })
-    fit('it should infer the correct probability for a junction forest.', () => {
-      const disconnected = new InferenceEngine({
-        A: { id: 'A', states: ['T', 'F'], parents: [], potentialFunction: [0.1, 0.9] },
-        B: { id: 'B', states: ['T', 'F'], parents: ['A'], potentialFunction: [0.2, 0.3, 0.3, 0.2] },
-        C: { id: 'C', states: ['T', 'F'], parents: [], potentialFunction: [0.2, 0.8] },
-        D: { id: 'D', states: ['T', 'F'], parents: ['C'], potentialFunction: [0.35, 0.15, 0.15, 0.35] },
-        E: { id: 'E', states: ['T', 'F'], parents: [], potentialFunction: [0.6, 0.4] },
-        F: { id: 'F', states: ['T', 'F'], parents: ['E'], potentialFunction: [0.45, 0.05, 0.05, 0.45] },
-      })
-      let dist = disconnected.getJointDistribution(['A', 'D'], [])
-      let json = dist.toJSON()
-      let observed = json.potentialFunction
-      let expected = [0.038, 0.342, 0.062, 0.558]
-      expect(observed.map(x => Number.parseFloat(x.toPrecision(4)))).toEqual(expected)
-
-      dist = disconnected.getJointDistribution(['E', 'C', 'B'], [])
-      json = dist.toJSON()
-      observed = json.potentialFunction
-      expected = [0.0696, 0.0464, 0.2784, 0.1856, 0.0504, 0.0336, 0.2016, 0.1344]
-      expect(observed.map(x => Number.parseFloat(x.toPrecision(4)))).toEqual(expected)
-    })
-  })
-
-  describe('The constructed distribution', () => {
-    it('should have the correct head variables', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      expect(dist.getHeadVariables().map(x => x.name)).toEqual(['node1', 'node12', 'node36'])
-      expect(dist.hasHeadVariable('node1')).toEqual(true)
-      expect(dist.hasHeadVariable('node12')).toEqual(true)
-      expect(dist.hasHeadVariable('node36')).toEqual(true)
-      expect(dist.hasHeadVariable('node2')).toEqual(false)
-      expect(dist.hasHeadVariable('node14')).toEqual(false)
-      expect(dist.hasHeadVariable('node7')).toEqual(false)
-    })
-    it('should have the correct parent variables', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      expect(dist.getParentVariables().map(x => x.name)).toEqual(['node2', 'node14'])
-      expect(dist.hasParentVariable('node1')).toEqual(false)
-      expect(dist.hasParentVariable('node12')).toEqual(false)
-      expect(dist.hasParentVariable('node36')).toEqual(false)
-      expect(dist.hasParentVariable('node2')).toEqual(true)
-      expect(dist.hasParentVariable('node14')).toEqual(true)
-      expect(dist.hasParentVariable('node7')).toEqual(false)
-    })
-    it('should have correct levels for each variable', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      expect(dist.getHeadVariable('node1').levels).toEqual(['T', 'F'])
-      expect(dist.getHeadVariable('node12').levels).toEqual(['T', 'F'])
-      expect(dist.getHeadVariable('node36').levels).toEqual(['T', 'F'])
-      expect(dist.getParentVariable('node2').levels).toEqual(['T', 'F'])
-      expect(dist.getParentVariable('node14').levels).toEqual(['T', 'F'])
-    })
-  })
-  describe('renameVariable', () => {
-    it("doesn't change the potential function", () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.toJSON().potentialFunction]
-      dist.renameVariable('node12', 'n12')
-      dist.renameVariable('node2', 'n2')
-      const observed = dist.toJSON().potentialFunction
-      expect(observed).toEqual(expected)
-    })
-    it('renames a head variable', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      dist.renameVariable('node12', 'n12')
-      const observed = dist.getHeadVariables().map(x => x.name)
-      expect(observed).toEqual(['node1', 'n12', 'node36'])
-    })
-    it('renames a parent variable', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      dist.renameVariable('node2', 'n2')
-      const observed = dist.getParentVariables().map(x => x.name)
-      expect(observed).toEqual(['n2', 'node14'])
-    })
-    it('doesn\'t change the variable\'s levels', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.getParentVariable('node2').levels]
-      dist.renameVariable('node2', 'n2')
-      const observed = [...dist.getParentVariable('n2').levels]
-      expect(observed).toEqual(expected)
-    })
-  })
-  describe('renameLevel', () => {
-    it("doesn't change the potential function", () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.toJSON().potentialFunction]
-      dist.renameLevel('node12', 'T', 'true')
-      dist.renameLevel('node2', 'T', 'true')
-      const observed = dist.toJSON().potentialFunction
-      expect(observed).toEqual(expected)
-    })
-    it('renames a level of a head variable', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      dist.renameLevel('node12', 'T', 'true')
-      const observed = dist.getHeadVariable('node12').levels
-      expect(observed).toEqual(['true', 'F'])
-    })
-    it('renames a parent variable', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      dist.renameLevel('node2', 'T', 'true')
-      const observed = dist.getParentVariable('node2').levels
-      expect(observed).toEqual(['true', 'F'])
-    })
-  })
-  describe('addHeadVariable', () => {
-    it('increases the number of head variables in the distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().numberOfHeadVariables + 1
-      dist.addHeadVariable('foo', ['T', 'F', '?'])
-      const observed = dist.toJSON().numberOfHeadVariables
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct variable name', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.getHeadVariables().map(x => x.name), 'foo']
-      dist.addHeadVariable('foo', ['T', 'F', '?'])
-      const observed = dist.getHeadVariables().map(x => x.name)
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct variable levels', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = ['T', 'F', '?']
-      dist.addHeadVariable('foo', ['T', 'F', '?'])
-      const observed = dist.getHeadVariable('foo').levels
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct number of elements to the potential function', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().potentialFunction.length * 3
-      dist.addHeadVariable('foo', ['T', 'F', '?'])
-      const observed = dist.toJSON().potentialFunction.length
-      expect(observed).toEqual(expected)
-    })
-    it('followed by remove recovers the original distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.toJSON().potentialFunction]
-      dist.addHeadVariable('foo', ['T', 'F', '?'])
-      dist.removeVariable('foo')
-      const observed = [...dist.toJSON().potentialFunction]
-      expect(observed.map(x => x.toPrecision(8))).toEqual(expected.map(x => x.toPrecision(8)))
-    })
-    it('marginal over new variable is uniform distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      dist.addHeadVariable('foo', ['T', 'F', '?'])
-      dist.removeVariable('node1')
-      dist.removeVariable('node12')
-      dist.removeVariable('node36')
-      dist.removeVariable('node2')
-      dist.removeVariable('node14')
-      const observed = [...dist.toJSON().potentialFunction]
-      expect(observed.map(x => x.toPrecision(8))).toEqual(['0.33333333', '0.33333333', '0.33333333'])
-    })
-  })
-  describe('addParentVariable', () => {
-    it('does not change the number of head variables in the distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().numberOfHeadVariables
-      dist.addParentVariable('foo', ['T', 'F', '?'])
-      const observed = dist.toJSON().numberOfHeadVariables
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct variable name', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.getParentVariables().map(x => x.name), 'foo']
-      dist.addParentVariable('foo', ['T', 'F', '?'])
-      const observed = dist.getParentVariables().map(x => x.name)
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct variable levels', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = ['T', 'F', '?']
-      dist.addParentVariable('foo', ['T', 'F', '?'])
-      const observed = dist.getParentVariable('foo').levels
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct number of elements to the potential function', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().potentialFunction.length * 3
-      dist.addParentVariable('foo', ['T', 'F', '?'])
-      const observed = dist.toJSON().potentialFunction.length
-      expect(observed).toEqual(expected)
-    })
-    it('followed by remove recovers the original distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.toJSON().potentialFunction]
-      dist.addParentVariable('foo', ['T', 'F', '?'])
-      dist.removeVariable('foo')
-      const observed = [...dist.toJSON().potentialFunction]
-      expect(observed.map(x => x.toPrecision(8))).toEqual(expected.map(x => x.toPrecision(8)))
-    })
-    it('marginal over new variable is uniform distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      dist.addParentVariable('foo', ['T', 'F', '?'])
-      const potential = dist.toJSON().potentialFunction
-      // note: using evaluate marginal here instead of remove, because we can't remove all the
-      // head variables from a distribution.
-      const observed = evaluateMarginalPure(potential, [0, 1, 2, 3, 4, 5], [2, 2, 2, 2, 2, 3], [5], [3], 3)
-      expect(observed.map(x => x.toPrecision(8))).toEqual(['0.33333333', '0.33333333', '0.33333333'])
-    })
-  })
-  describe('addLevel', () => {
-    it('adds the correct level name', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = ['T', 'F', '?']
-      dist.addLevel('node12', '?')
-      const observed = dist.getHeadVariable('node12').levels
-      expect(observed).toEqual(expected)
-    })
-    it('adds the correct number of elements to the potential function', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().potentialFunction.length / 2 * 3
-      dist.addLevel('node12', '?')
-      const observed = dist.toJSON().potentialFunction.length
-      expect(observed).toEqual(expected)
-    })
-    it('followed by remove level recovers the original distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = [...dist.toJSON().potentialFunction]
-      dist.addLevel('node12', '?')
-      dist.removeLevel('node12', '?')
-      const observed = [...dist.toJSON().potentialFunction]
-      expect(observed.map(x => x.toPrecision(8))).toEqual(expected.map(x => x.toPrecision(8)))
-    })
-  })
-  describe('removeVariable', () => {
-    it('removes the named variable if it exists', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = difference(dist.getHeadVariables().map(x => x.name), ['node12'])
-      dist.removeVariable('node12')
-      const observed = dist.getHeadVariables().map(x => x.name)
-      expect(observed).toEqual(expected)
-    })
-    it('does nothing if the named variable does not exist', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.getHeadVariables().map(x => x.name)
-      dist.removeVariable('foo')
-      const observed = dist.getHeadVariables().map(x => x.name)
-      expect(observed).toEqual(expected)
-    })
-    it('Reduces the number of head variables if the variable is a head variable', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().numberOfHeadVariables - 1
-      dist.removeVariable('node12')
-      const observed = dist.toJSON().numberOfHeadVariables
-      expect(observed).toEqual(expected)
-    })
-    it('Does not change the number of head variables if the variable is a parent', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().numberOfHeadVariables
-      dist.removeVariable('node2')
-      const observed = dist.toJSON().numberOfHeadVariables
-      expect(observed).toEqual(expected)
-    })
-    it('removes the correct number of elements from the potential function', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().potentialFunction.length / 2
-      dist.removeVariable('node12')
-      const observed = dist.toJSON().potentialFunction.length
-      expect(observed).toEqual(expected)
-    })
-  })
-  describe('removeLevel', () => {
-    it('removes the level if it exists', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = difference(dist.getHeadVariable('node12').levels, ['F'])
-      dist.removeLevel('node12', 'F')
-      const observed = dist.getHeadVariable('node12').levels
-      expect(observed).toEqual(expected)
-    })
-    it('does nothing if the level does not exist', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.getHeadVariable('node12').levels
-      dist.removeLevel('node12', '?')
-      const observed = dist.getHeadVariable('node12').levels
-      expect(observed).toEqual(expected)
-    })
-    it('removes the correct number of elements from the potential function', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const expected = dist.toJSON().potentialFunction.length / 2
-      dist.removeLevel('node12', 'F')
-      const observed = dist.toJSON().potentialFunction.length
-      expect(observed).toEqual(expected)
-    })
-  })
-  describe('describe', () => {
-    it('has the correct number of rows for a joint distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], [])
-      const descr = dist.describe()
-      const json = dist.toJSON()
-      const expected = 2 + json.potentialFunction.length
-      const observed = descr.split('\n').length
-      expect(observed).toEqual(expected)
-    })
-    it('has the correct number of rows for a conditional distribution', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const descr = dist.describe()
-      const json = dist.toJSON()
-      const numberOfParentLevels: number[] = json.variableLevels.slice(json.numberOfHeadVariables).map(x => x.length)
-      const expected = 1 + json.potentialFunction.length + product(numberOfParentLevels)
-      const observed = descr.split('\n').length
-      expect(observed).toEqual(expected)
-    })
-    it('description of joint distribution sums to approximately 1', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], [])
-      const descr = dist.describe()
-      const rows = descr.split('\n').slice(2)
-      const values: number[] = rows.map(x => Number.parseFloat(x.split('||')[1]))
-      const expected = 1E-5
-      const observed = Math.abs(1 - sum(values))
-      expect(observed).toBeLessThan(expected)
-    })
-    it('each block of description of conditional distribution sums to approximately 1', () => {
-      const dist = engine.getJointDistribution(['node1', 'node12', 'node36'], ['node2', 'node14'])
-      const descr = dist.describe()
-      const rows = descr.split('\n').slice(2)
-      const json = dist.toJSON()
-      const blocksize: number = product(json.variableLevels.slice(0, json.numberOfHeadVariables).map(x => x.length))
-      const numberOfBlocks: number = product(json.variableLevels.slice(json.numberOfHeadVariables).map(x => x.length))
-      const expected = 1E-5
-      for (let i = 0; i < numberOfBlocks; i++) {
-        const block = rows.slice(i + i * blocksize, i + (i + 1) * blocksize)
-        const values: number[] = block.map(x => Number.parseFloat(x.split('||')[1]))
-        const observed = Math.abs(1 - sum(values))
-        expect(observed).toBeLessThan(expected)
-      }
-    })
-  })
-  describe('fromCPT', () => {
-    it('encodes the correct joint distribution without parents', () => {
-      const dist = fromCPT('Foo', { bar: 10, baz: 90 })
-      const json = dist.toJSON()
-      expect(json.numberOfHeadVariables).toEqual(1)
-      expect(json.variableNames).toEqual(['Foo'])
-      expect(json.variableLevels).toEqual([['bar', 'baz']])
-      expect(json.potentialFunction).toEqual([0.1, 0.9])
-    })
-    it('encodes the correct joint distribution with parents', () => {
-      const dist = fromCPT('Foo', [
-        { when: { animal: 'cat', color: 'black' }, then: { bar: 10, baz: 90 } },
-        { when: { animal: 'cat', color: 'white' }, then: { bar: 70, baz: 30 } },
-        { when: { animal: 'dog', color: 'black' }, then: { bar: 80, baz: 20 } },
-        { when: { animal: 'dog', color: 'white' }, then: { bar: 40, baz: 60 } },
-        { when: { animal: 'dog', color: 'brown' }, then: { bar: 90, baz: 10 } },
-      ])
-      const json = dist.toJSON()
-      expect(json.numberOfHeadVariables).toEqual(1)
-      expect(json.variableNames).toEqual(['Foo', 'animal', 'color'])
-      expect(json.variableLevels).toEqual([['bar', 'baz'], ['cat', 'dog'], ['black', 'white', 'brown']])
-      expect(json.potentialFunction).toEqual([
-        0.02, 0.18, 0.16, 0.04, 0.14, 0.06, 0.08, 0.12, 0, 0, 0.18, 0.02,
-      ])
     })
   })
 })
