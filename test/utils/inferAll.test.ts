@@ -1,12 +1,10 @@
 import * as expect from 'expect'
 
-import { allNodes } from '../../models/alarm'
-import { createNetwork } from '../../src/utils'
-import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
-import { InferenceEngine } from '../../src/index'
+import { network } from '../../models/alarm'
+import { network as hugeNetwork } from '../../models/huge-network'
+import { InferenceEngine, ICptWithParents } from '../../src/index'
+import { fromCPT } from '../../src/engines'
 
-const network = createNetwork(...allNodes)
-const hugeNetwork = createNetwork(...hugeNetworkAllNodes)
 const engine = new InferenceEngine(network)
 const hugeEngine = new InferenceEngine(hugeNetwork)
 
@@ -18,10 +16,10 @@ describe('InferAll Utils', () => {
       engine.inferAll() // infer to cache
 
       // change network by mutation
-      engine.setDistribution('JOHN_CALLS', [
+      engine.setDistribution(fromCPT('JOHN_CALLS', [
         { when: { ALARM: 'T' }, then: { T: 0.1, F: 0.9 } },
         { when: { ALARM: 'F' }, then: { T: 0.95, F: 0.05 } },
-      ])
+      ]))
 
       expect(engine.inferAll({ precision: 8 })).toEqual({
         BURGLARY: {
@@ -54,7 +52,7 @@ describe('InferAll Utils', () => {
         describe('No evidences', () => {
           it("returns inference result for all node's state", () => {
             engine.removeAllEvidence()
-            engine.setDistribution('JOHN_CALLS', network.JOHN_CALLS.cpt)
+            engine.setDistribution(fromCPT('JOHN_CALLS', network.JOHN_CALLS.cpt as ICptWithParents))
 
             expect(engine.inferAll({ precision: 4 })).toEqual({
               BURGLARY: { T: 0.001, F: 0.999 },

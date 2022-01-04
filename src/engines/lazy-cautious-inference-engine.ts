@@ -1,18 +1,20 @@
 import {
-  INetwork, INetworkResult,
-  IInferenceEngine, ICptWithParents, ICptWithoutParents, IInferAllOptions,
+  INetworkResult,
+  IInferenceEngine, IInferAllOptions, ICptWithParents, ICptWithoutParents,
 } from '../types'
 import { clone } from 'ramda'
 import roundTo = require('round-to')
 
-import { cptToFastPotential, FastPotential, fastPotentialToCPT, indexToCombination } from './FastPotential'
+import { FastPotential, indexToCombination } from './FastPotential'
 import { FastClique } from './FastClique'
 import { FastNode } from './FastNode'
 import { NodeId, CliqueId, FormulaId } from './common'
 import { Formula, EvidenceFunction, updateReferences } from './Formula'
 import { propagatePotentials } from './symbolic-propagation'
 import { evaluate } from './evaluation'
-import { getNetworkInfo, initializeCliques, initializeEvidence, initializeNodeParents, initializeNodes, initializePosteriorCliquePotentials, initializePosteriorNodePotentials, initializePriorNodePotentials, initializeSeparatorPotentials, NetworkInfo, upsertFormula } from './util'
+import { getNetworkInfo, initializeCliques, initializeEvidence, initializeNodeParents, initializeNodes, initializePosteriorCliquePotentials, initializePosteriorNodePotentials, initializePriorNodePotentials, initializeSeparatorPotentials, NetworkInfo, upsertFormula, setDistribution } from './util'
+import { Distribution } from './Distribution'
+import { arbitraryJoin } from './arbitrary-join'
 
 /** This inference engine uses a modified version of the lazy cautious message
  * propigation strategy described in:
@@ -60,7 +62,13 @@ export class LazyPropagationEngine implements IInferenceEngine {
     f.refrerencedBy.forEach(childId => this.clearCachedValues(childId))
   }
 
-  constructor (network: INetwork) {
+  constructor (network: {[name: string]: {
+    levels: string[];
+    parents: string[];
+    potentialFunction?: FastPotential;
+    distribution?: Distribution;
+    cpt?: ICptWithParents | ICptWithoutParents;
+  };}) {
     const info: NetworkInfo = getNetworkInfo(network)
     const { connectedComponents, separators } = info
     const { nodeMap, cliqueMap } = info
@@ -122,21 +130,34 @@ export class LazyPropagationEngine implements IInferenceEngine {
 
   // implementation of the getDistribution interface function.
   // this returns the prior distribution for the given variable.
-  getDistribution = (name: string) => {
-    const node = this._nodes.find(x => x.name === name)
-    if (!node) return []
-    return fastPotentialToCPT(node.id, this._nodes, this._potentials[node.id] || [])
+  getDistribution = (name: string) =>
+    this.getJointDistribution([name], this._nodes.find(x => x.name === name)?.parents.map(i => this._nodes[i].name) || [])
+
+  getJointDistribution = (headVariables: string[], parentVariables: string[]): Distribution => {
+    // Sanity Checks
+    const err = (reason: string) => {
+      const msg = 'Cannot construct the joint distribution for the given head and parent variables.  ' + reason
+      throw new Error(msg)
+    }
+    if (headVariables.some(name => this.hasEvidenceFor(name))) err('Hard evidence has been provided for some of the head variables.')
+    if (parentVariables.some(name => this.hasEvidenceFor(name))) err('Hard evidence has been provided for some of the parent variables.')
+
+    const parentIdxs: number[] = parentVariables.map(s => this._nodes.findIndex(node => node.name === s))
+    const headIdxs: number[] = headVariables.map(s => this._nodes.findIndex(node => node.name === s))
+    this._formulas.forEach(f => evaluate(f.id, this._nodes, this._formulas, this._potentials))
+    const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._separators, this._formulas, this._potentials, headIdxs, parentIdxs)
+    return new Distribution(headVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], parentVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], potentialFunction)
   }
 
   // implementation of the setDistribution interface function.
   // note that this clears the cache for any potential that is dependendent
   // either directly or indirectly on this value.
-  setDistribution = (name: string, distribution: ICptWithoutParents | ICptWithParents) => {
-    const node = this._nodes.find(x => x.name === name)
-    if (node) {
-      this.clearCachedValues(node.id)
-      this._potentials[node.id] = cptToFastPotential(node, distribution, this._nodes)
-    }
+  setDistribution = (distribution: Distribution): boolean => {
+    const nodeId = setDistribution(distribution, this._nodes, this._potentials)
+    const p = this._potentials[nodeId]
+    this.clearCachedValues(nodeId)
+    this._potentials[nodeId] = p
+    return true
   }
 
   // implementation of the hasEvidenceFor interface function.
@@ -154,7 +175,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const node = this._nodes.find(x => x.name === name)
     if (node) {
       const lvl = (this._formulas[node.evidenceFunction] as EvidenceFunction).level
-      if (lvl !== null ) result = node.levels[lvl]
+      if (lvl !== null) result = node.levels[lvl]
     }
     return result
   }
@@ -223,8 +244,12 @@ export class LazyPropagationEngine implements IInferenceEngine {
    * that contain the nodes.   This is expensive, and should be cached to avoid
    * expensive recomputation.  This is left as future work.
    */
-  private inferFromJointDistribution (nodeIds: NodeId[]): number {
-    throw new Error(`Computing the joint distribution of nodes ${nodeIds} is not yet supported.   They are in different cliques of the junction tree`)
+  private inferFromJointDistribution (nodeIds: NodeId[], event: {[name: string]: string}): number {
+    const names = Object.keys(event)
+    console.warn(`The requested join (${names.join(', ')} are not in the same clique of the junction tree)`)
+    console.warn('Use \'getJointDistribution\' to efficiently make repeated inferences.')
+    const dist = this.getJointDistribution(names, [])
+    return dist.infer(event)
   }
 
   /** Given a collection of nodes and levels representing an event, and a clique
@@ -287,10 +312,9 @@ export class LazyPropagationEngine implements IInferenceEngine {
     // Otherwise, we must construct the joint probability distribution
     // by forcing all the variables into a single clique.
     // This is left for future work
-    return this.inferFromJointDistribution(idxs)
+    return this.inferFromJointDistribution(idxs, event)
   }
 
-  // Implementation of the inferAll interface function.
   inferAll = (options?: IInferAllOptions) => {
     const result: INetworkResult = {}
     this._nodes.forEach(fastnode => {

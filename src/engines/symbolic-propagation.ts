@@ -31,7 +31,6 @@ const passMessage = (sepSet: number[], messages: Messages, upsert: (f: Formula) 
 
   const [dontRequireMarginalization, requireMarginalization] = partition<Formula>((f: Formula) => f.domain.every(x => sepSet.includes(x)), factors)
   const msgs = [...dontRequireMarginalization, ...evidence.filter(x => dontRequireMarginalization.some(y => y.domain.includes(x.nodeId)))]
-
   if (requireMarginalization.length > 0) {
     let marg: Formula
     const es = evidence.filter(x => requireMarginalization.some(y => y.domain.includes(x.nodeId)))

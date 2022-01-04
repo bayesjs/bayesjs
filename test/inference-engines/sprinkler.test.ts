@@ -1,8 +1,7 @@
 import * as expect from 'expect'
 
 import { IInferenceEngine } from '../../src/types'
-import { allNodes } from '../../models/rain-sprinkler-grasswet'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/rain-sprinkler-grasswet'
 import { InferenceEngine } from '../../src/index'
 
 const infersGiveSprinklerTrue = (engine: IInferenceEngine) => {
@@ -77,7 +76,6 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
 describe('infers', () => {
   describe('sprinkler network', () => {
     const testNames = Object.keys(tests)
-    const network = createNetwork(...allNodes)
     const engine = new InferenceEngine(network)
 
     for (const testName of testNames) {

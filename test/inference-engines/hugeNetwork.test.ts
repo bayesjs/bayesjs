@@ -2,8 +2,7 @@ import * as expect from 'expect'
 
 import { IInferenceEngine } from '../../src/types'
 
-import { allNodes } from '../../models/huge-network'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/huge-network'
 import { InferenceEngine } from '../../src/index'
 
 const infersGiveNoEvidence = (engine: IInferenceEngine) => {
@@ -619,7 +618,6 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
 
 describe('infers', () => {
   describe('hugeNetwork', () => {
-    const network = createNetwork(...allNodes)
     const testNames = Object.keys(tests)
 
     const engine = new InferenceEngine(network)

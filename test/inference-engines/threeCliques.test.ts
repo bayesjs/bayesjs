@@ -1,8 +1,7 @@
 import * as expect from 'expect'
 
 import { IInferenceEngine } from '../../src/types'
-import { allNodes } from '../../models/three-cliques'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/three-cliques'
 import { InferenceEngine } from '../../src/index'
 
 const infersGiveNothing = (engine: IInferenceEngine) => {
@@ -198,7 +197,6 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
 describe('infers', () => {
   describe('3q network', () => {
     const testNames = Object.keys(tests)
-    const network = createNetwork(...allNodes)
     const engine = new InferenceEngine(network)
 
     for (const testName of testNames) {

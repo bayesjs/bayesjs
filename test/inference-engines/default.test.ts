@@ -1,11 +1,9 @@
 import * as expect from 'expect'
 
 import { IInferenceEngine } from '../../src/types'
-import { allNodes } from '../../models/rain-sprinkler-grasswet'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/rain-sprinkler-grasswet'
 import { InferenceEngine } from '../../src/index'
 
-const network = createNetwork(...allNodes)
 const engine = new InferenceEngine(network)
 
 const infersSingleNode = (engine: IInferenceEngine) => {

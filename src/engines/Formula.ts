@@ -172,12 +172,12 @@ export class NodePotential {
   size: number;
   refrerencedBy: number[] = []
 
-  constructor (node: FastNode, nodes: FastNode[]) {
+  constructor (node: FastNode, parentLevels: string[][]) {
     this.id = node.id
     this.nodeId = node.id
     this.domain = [node.id, ...node.parents]
     this.name = `Φ(${node.id})`
-    this.numberOfLevels = [node.levels.length, ...node.parents.map(x => nodes[x].levels.length)]
+    this.numberOfLevels = [node.levels.length, ...parentLevels.map(x => x.length)]
     this.size = product(this.numberOfLevels)
   }
 }
