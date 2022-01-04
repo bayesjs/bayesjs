@@ -8,7 +8,7 @@ import { IClique, ICliqueFactors, IGraph, INetwork } from '..'
 import { FastNode } from './FastNode'
 import { FastClique } from './FastClique'
 import { messageName } from './symbolic-propagation'
-import { reduce, product, sum } from 'ramda'
+import { reduce, product } from 'ramda'
 import { ICptWithParentsItem, ICptWithoutParents, ICptWithParents } from '../types'
 import { Distribution, fromCPT } from './Distribution'
 import { evaluateMarginalPure } from './evaluation'
@@ -113,13 +113,12 @@ export type NetworkInfo = {
  * inference engine.
  */
 export const getNetworkInfo = (network: { [name: string]: {
-  id: string;
-  states: string[];
+  levels: string[];
   parents: string[];
 };}): NetworkInfo => {
   const inet: INetwork = {}
   Object.entries(network).forEach(([k, v]) => {
-    inet[k] = { ...v, cpt: ([] as ICptWithParentsItem[]) }
+    inet[k] = { id: k, parents: v.parents, states: v.levels, cpt: ([] as ICptWithParentsItem[]) }
   })
   const { cliques, sepSets, junctionTree } = createCliques(inet)
 
@@ -234,17 +233,16 @@ export const upsertFormula = (formulas: Formula[], formulaLookup: { [name: strin
 }
 
 export function initializeNodes (network: { [name: string]: {
-  id: string;
-  states: string[];
+  levels: string[];
   parents: string[];
 };}, nodeMap: { [name: string]: NodeId }, upsert: (formula: Formula) => Formula, nodes: FastNode[]) {
   // Initialize the collection of nodes using the fast integer indexing.
 // note that some of the fields (children, cliques, factorAssignedTo)
-// cannot be populated on the initial pass.
-  Object.values(network).forEach((node, i) => {
+// cannot be populated on the initial pass.)
+  Object.entries(network).forEach(([k, node], i) => {
     const fastnode = {
       id: i,
-      name: node.id,
+      name: k,
       parents: node.parents.map(parentname => nodeMap[parentname]),
       children: [],
       referencedBy: [i],
@@ -253,9 +251,10 @@ export function initializeNodes (network: { [name: string]: {
       evidenceFunction: 0,
       cliques: [],
       factorAssignedTo: 0,
-      levels: node.states,
+      levels: node.levels,
     }
-    upsert(new NodePotential(fastnode, nodes))
+    const parentLevels = node.parents.map(x => network[x].levels)
+    upsert(new NodePotential(fastnode, parentLevels))
     nodes[i] = fastnode
   })
 }
@@ -373,8 +372,7 @@ export function initializePosteriorNodePotentials (upsert: (formula: Formula) =>
 // Convert the cpts for each variable into a potential function
 // and cache at the same index as the node.
 export function initializePriorNodePotentials (network: {[name: string]: {
-  id: string;
-  states: string[];
+  levels: string[];
   parents: string[];
   potentialFunction?: FastPotential;
   distribution?: Distribution;
@@ -393,17 +391,18 @@ export function initializePriorNodePotentials (network: {[name: string]: {
       setDistribution(dist, fastNodes, potentials)
       return
     }
-    const numberOfLevels = [node.levels.length, ...node.parents.map(j => fastNodes[j].levels.length)]
     // otherwise, construct the uniform distribution.
     if (network[node.name].potentialFunction) {
-      const p = network[node.name].potentialFunction as FastPotential
-      if (p.length !== product(numberOfLevels)) throw new Error(`Cannot set distribution for ${node.name}.   It has the wrong number of elements`)
-      if (p.some(x => x < 0)) throw new Error(`Cannot set distribution for ${node.name}.   Some of the potentials are less than zero.`)
-      const total = sum(p)
-      if (total === 0) throw new Error(`Cannot set distribution for ${node.name}.   There are no non-zero potentials.`)
-      potentials[node.id] = p.map(x => x / total)
-      return
+      const pmap = node.parents.map(pname => {
+        const pnode = fastNodes.find(pnode => pnode.id === pname) as FastNode
+        return { name: pnode.name, levels: pnode.levels }
+      })
+      const dist = new Distribution([{ name: node.name, levels: node.levels }], pmap, network[node.name].potentialFunction)
+      setDistribution(dist, fastNodes, potentials)
+    } else {
+    // if nothing was provided, then populate the with the uniform distribution.
+      const numberOfLevels = [node.levels.length, ...node.parents.map(j => fastNodes[j].levels.length)]
+      potentials[node.id] = Array(product(numberOfLevels)).fill(1 / product(numberOfLevels))
     }
-    potentials[node.id] = Array(product(numberOfLevels)).fill(1 / product(numberOfLevels))
   })
 }

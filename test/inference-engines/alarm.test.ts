@@ -1,8 +1,7 @@
 import * as expect from 'expect'
 
 import { IInferenceEngine } from '../../src/types'
-import { allNodes } from '../../models/alarm'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/alarm'
 import { InferenceEngine } from '../../src/index'
 import { fromCPT } from '../../src/engines'
 
@@ -196,7 +195,6 @@ const tests: { [key: string]: (engine: IInferenceEngine) => void } = {
 describe('infers', () => {
   describe('alarm network', () => {
     const testNames = Object.keys(tests)
-    const network = createNetwork(...allNodes)
     const engine = new InferenceEngine(network)
 
     for (const testName of testNames) {

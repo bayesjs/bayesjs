@@ -1,4 +1,4 @@
-import { INode } from '../src/types'
+import { INode, ICptWithParents, ICptWithoutParents } from '../src/types'
 
 export const rain: INode = {
   id: 'RAIN',
@@ -30,3 +30,11 @@ export const grassWet: INode = {
 }
 
 export const allNodes = [rain, sprinkler, grassWet]
+export const network: { [name: string]: { levels: string[]; parents: string[]; cpt?: ICptWithParents | ICptWithoutParents}} = {}
+allNodes.forEach((node: INode) => {
+  network[node.id] = {
+    levels: node.states,
+    parents: node.parents,
+    cpt: node.cpt,
+  }
+})

@@ -1,11 +1,9 @@
 import * as expect from 'expect'
 
-import { allNodes } from '../../models/huge-network'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/huge-network'
 import { InferenceEngine } from '../../src/index'
 import { difference } from 'ramda'
 
-const network = createNetwork(...allNodes)
 const engine = new InferenceEngine(network)
 
 describe('removeVariable', () => {

@@ -63,8 +63,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
   }
 
   constructor (network: {[name: string]: {
-    id: string;
-    states: string[];
+    levels: string[];
     parents: string[];
     potentialFunction?: FastPotential;
     distribution?: Distribution;
@@ -245,8 +244,12 @@ export class LazyPropagationEngine implements IInferenceEngine {
    * that contain the nodes.   This is expensive, and should be cached to avoid
    * expensive recomputation.  This is left as future work.
    */
-  private inferFromJointDistribution (nodeIds: NodeId[]): number {
-    throw new Error(`Computing the joint distribution of nodes ${nodeIds} is not yet supported.   They are in different cliques of the junction tree`)
+  private inferFromJointDistribution (nodeIds: NodeId[], event: {[name: string]: string}): number {
+    const names = Object.keys(event)
+    console.warn(`The requested join (${names.join(', ')} are not in the same clique of the junction tree)`)
+    console.warn('Use \'getJointDistribution\' to efficiently make repeated inferences.')
+    const dist = this.getJointDistribution(names, [])
+    return dist.infer(event)
   }
 
   /** Given a collection of nodes and levels representing an event, and a clique
@@ -309,7 +312,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
     // Otherwise, we must construct the joint probability distribution
     // by forcing all the variables into a single clique.
     // This is left for future work
-    return this.inferFromJointDistribution(idxs)
+    return this.inferFromJointDistribution(idxs, event)
   }
 
   inferAll = (options?: IInferAllOptions) => {

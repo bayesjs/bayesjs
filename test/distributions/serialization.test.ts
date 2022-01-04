@@ -1,12 +1,10 @@
 import * as expect from 'expect'
 
-import { allNodes } from '../../models/huge-network'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/huge-network'
 import { InferenceEngine, Distribution } from '../../src/index'
 
 describe('toJSON', () => {
   it('round trip is faithful', () => {
-    const network = createNetwork(...allNodes)
     const engine = new InferenceEngine(network)
     const dist: Distribution = engine.getJointDistribution(['node1', 'node12', 'node19'], ['node2', 'node32'])
     const observed = dist.toJSON()

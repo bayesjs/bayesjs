@@ -1,10 +1,8 @@
 import * as expect from 'expect'
 
-import { allNodes } from '../../models/huge-network'
-import { createNetwork } from '../../src/utils'
+import { network } from '../../models/huge-network'
 import { InferenceEngine } from '../../src/index'
 
-const network = createNetwork(...allNodes)
 const engine = new InferenceEngine(network)
 
 function infer (event: { [name: string]: string}, evidence: { [name: string]: string}, precision: number) {
@@ -57,14 +55,14 @@ describe('should infer the correct liklihood for a distribution', () => {
     const observed = infer({ node1: 'T' }, { node2: 'Z' }, 4)
     expect(observed).toEqual(0)
   })
-  fit('it should infer the correct probability for a junction forest.', () => {
+  it('it should infer the correct probability for a junction forest.', () => {
     const disconnected = new InferenceEngine({
-      A: { id: 'A', states: ['T', 'F'], parents: [], potentialFunction: [0.1, 0.9] },
-      B: { id: 'B', states: ['T', 'F'], parents: ['A'], potentialFunction: [0.2, 0.3, 0.3, 0.2] },
-      C: { id: 'C', states: ['T', 'F'], parents: [], potentialFunction: [0.2, 0.8] },
-      D: { id: 'D', states: ['T', 'F'], parents: ['C'], potentialFunction: [0.35, 0.15, 0.15, 0.35] },
-      E: { id: 'E', states: ['T', 'F'], parents: [], potentialFunction: [0.6, 0.4] },
-      F: { id: 'F', states: ['T', 'F'], parents: ['E'], potentialFunction: [0.45, 0.05, 0.05, 0.45] },
+      A: { levels: ['T', 'F'], parents: [], potentialFunction: [0.1, 0.9] },
+      B: { levels: ['T', 'F'], parents: ['A'], potentialFunction: [0.2, 0.3, 0.3, 0.2] },
+      C: { levels: ['T', 'F'], parents: [], potentialFunction: [0.2, 0.8] },
+      D: { levels: ['T', 'F'], parents: ['C'], potentialFunction: [0.35, 0.15, 0.15, 0.35] },
+      E: { levels: ['T', 'F'], parents: [], potentialFunction: [0.6, 0.4] },
+      F: { levels: ['T', 'F'], parents: ['E'], potentialFunction: [0.45, 0.05, 0.05, 0.45] },
     })
     let dist = disconnected.getJointDistribution(['A', 'D'], [])
     let json = dist.toJSON()
