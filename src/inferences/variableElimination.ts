@@ -4,6 +4,7 @@ import {
   ICptWithoutParents,
   IFactor,
   IInfer,
+  IFactorItem,
   INetwork,
   INode,
 } from '../types'
@@ -56,7 +57,7 @@ function buildFactor (node: INode, giving?: ICombinations): IFactor {
 }
 
 function joinFactors (f1: IFactor, f2: IFactor): IFactor {
-  const newFactor = []
+  const newFactor: Array<IFactorItem> = []
 
   for (let i = 0; i < f1.length; i++) {
     for (let j = 0; j < f2.length; j++) {
@@ -70,7 +71,8 @@ function joinFactors (f1: IFactor, f2: IFactor): IFactor {
       const alreadyExists = newFactor.some(x => nodeIds.every(nodeId => x.states[nodeId] === states[nodeId]))
 
       if (!alreadyExists) {
-        newFactor.push({ states, value: 0 })
+        const elem: IFactorItem = { states, value: 0 }
+        newFactor.push(elem)
       }
     }
   }
@@ -146,6 +148,7 @@ export const infer: IInfer = (network: INetwork, nodes: ICombinations = {}, givi
     .map(nodeId => buildFactor(network[nodeId], giving))
 
   while (variablesToEliminate.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const varToEliminate = variablesToEliminate.shift()!
 
     const factorsToJoin = factors.filter(factor => Object.keys(factor[0].states).some(nodeId => nodeId === varToEliminate))
