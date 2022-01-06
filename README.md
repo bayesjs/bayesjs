@@ -114,15 +114,15 @@ variables to the values provided.   Any variables not mentioned in the input wil
 For example using the alarm network you can run the following probabilistic inference queries:
 ```javascript
 // given no other information, what is the likelihood that Mary calls?
-console.log(engine.infer({ MARY_CALLS: 'T'}))
+console.log(engine.infer({ MARY_CALLS: ['T']}))
 // given no other information, what is the likelihood of observing that Mary calls and there is an alarm?
-console.log(engine.infer({ MARY_CALLS: 'T', ALARM: 'T'}))
+console.log(engine.infer({ MARY_CALLS: ['T'], ALARM: ['T']}))
 // given no other information, what is the likelihood of observing that Mary calls and there is an alarm and an earthquake?
-console.log(engine.infer({ MARY_CALLS: 'T', ALARM: 'T', 'EARTHQUAKE': 'T'}))
+console.log(engine.infer({ MARY_CALLS: ['T'], ALARM: ['T'], 'EARTHQUAKE': ['T']}))
 
 // Given that there is an earthquake, what is the likelihood of observing that Mary calls and there is an alarm?
-engine.setEvidence({ EARTHQUAKE: 'T' })
-console.log(engine.infer({ MARY_CALLS: 'T', ALARM: 'T' }))
+engine.setEvidence({ EARTHQUAKE: ['T'] })
+console.log(engine.infer({ MARY_CALLS: ['T'], ALARM: ['T'] }))
 ```
 which produces the following results:
 ```
@@ -144,10 +144,10 @@ engine.removeAllEvidence()
     // construct the joint distribution on MARY_CALLS, ALARM conditioned on EARTHQUAKE
     const MA_E = engine.getJointDistribution(['MARY_CALLS', 'ALARM'], ['EARTHQUAKE'])
 
-    console.log(M.infer({ MARY_CALLS: 'T' }))
-    console.log(MA.infer({ MARY_CALLS: 'T', ALARM: 'T' }))
-    console.log(MAE.infer({ MARY_CALLS: 'T', ALARM: 'T', EARTHQUAKE: 'T' }))
-    console.log(MA_E.infer({ MARY_CALLS: 'T', ALARM: 'T' }, { EARTHQUAKE: 'T' }))
+    console.log(M.infer({ MARY_CALLS: ['T'] }))
+    console.log(MA.infer({ MARY_CALLS: ['T'], ALARM: ['T'] }))
+    console.log(MAE.infer({ MARY_CALLS: ['T'], ALARM: ['T'], EARTHQUAKE: ['T'] }))
+    console.log(MA_E.infer({ MARY_CALLS: ['T'], ALARM: ['T'] }, { EARTHQUAKE: ['T'] }))
 ```
 
 When you wish to make repeated inferences on the same joint distribution, we
@@ -155,8 +155,21 @@ recommomend that you use getJointDistribution function to create a "stand alone"
 object for that join.   For large networks this will offer the best runtime
 performance.
 
+### Cumulative probabilities and soft evidence.
+When you are interested in the cumulative probability over a range of possible events, you can simply pass
+the range of values of interest to the infer function.  Likewise, if you are intersted in specifying a range of possible
+values for parent variables (soft evidence) you can do this by providing more than one level for each parent
+variable.
 
 
+For example, consider a hypothetical weather Network.   You might want to infer the probability the weather will be bad (either raining or snowing) given that it is winter:
+
+```javascript
+const weatherPredictionEngine = ...
+
+weatherPredictionEngine.setEvidence({month:['JAN','FEB','MAR']})
+weatherPredictionEngine.infer({ weather: ['RAINING','SNOWING']})
+```
 
 ## Inference Without An inference Engine
 The bayesjs library exposes legacy functions for performing inference without creating an inference engine.
