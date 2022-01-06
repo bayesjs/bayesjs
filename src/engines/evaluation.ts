@@ -236,12 +236,12 @@ const evaluateEvidence = (evidenceFunction: EvidenceFunction, potentials: MaybeF
   // if no evidence is provided, then we can return the inner potential
   const result: number[] = Array(evidenceFunction.size).fill(1)
   let total = 0
-  if (evidenceFunction.level == null) {
+  if (evidenceFunction.levels == null) {
     potentials[evidenceFunction.id] = result.fill(1)
     total = result.length
   } else {
     result.forEach((_, i) => {
-      result[i] = i === evidenceFunction.level ? 1 : 0
+      result[i] = evidenceFunction.levels?.includes(i) ? 1 : 0
       total += result[i]
     })
   }

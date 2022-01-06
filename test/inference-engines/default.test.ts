@@ -32,7 +32,7 @@ const infersMultiplesNodes = (engine: IInferenceEngine) => {
 const inferOnNodesGivingOthers = (engine: IInferenceEngine) => {
   const { infer } = engine
   const nodeToInfer = { RAIN: ['T'] }
-  engine.setEvidence({ GRASS_WET: 'T' })
+  engine.setEvidence({ GRASS_WET: ['T'] })
 
   expect(infer(nodeToInfer).toFixed(4)).toBe('0.3577')
 }

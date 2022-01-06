@@ -165,29 +165,29 @@ export class LazyPropagationEngine implements IInferenceEngine {
     if (!node) {
       return false
     }
-    return (this._formulas[node.evidenceFunction] as EvidenceFunction).level != null
+    return (this._formulas[node.evidenceFunction] as EvidenceFunction).levels != null
   }
 
   // implementation of the getEvidence interface function
   getEvidence = (name: string) => {
-    let result: string | null = null
+    let result: string[] | null = null
     const node = this._nodes.find(x => x.name === name)
     if (node) {
-      const lvl = (this._formulas[node.evidenceFunction] as EvidenceFunction).level
-      if (lvl !== null) result = node.levels[lvl]
+      const lvls = (this._formulas[node.evidenceFunction] as EvidenceFunction).levels
+      if (lvls !== null) result = lvls.map(lvl => node.levels[lvl])
     }
     return result
   }
 
   // implementation of the updateEvidence interface function.
-  updateEvidence = (evidence: { [name: string]: string}) => {
+  updateEvidence = (evidence: { [name: string]: [string]}) => {
     Object.keys(evidence).forEach(name => {
       const node = this._nodes.find(x => x.name === name)
       if (node) {
         const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
-        const lvlIdx = node.levels.findIndex(x => x === evidence[name])
-        if (lvlIdx >= 0 && lvlIdx !== evidenceFunc.level) {
-          evidenceFunc.level = lvlIdx
+        const lvlIdxs: number[] = uniq(evidence[name].map(l => node.levels.indexOf(l)).filter(x => x >= 0)).sort()
+        if (lvlIdxs.length > 0 && evidenceFunc.levels !== lvlIdxs) {
+          evidenceFunc.levels = lvlIdxs
           this.clearCachedValues(evidenceFunc.id)
         }
       }
@@ -195,7 +195,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
   }
 
   // Implementation of the setEvidence interface function.
-  setEvidence = (evidence: { [name: string]: string}) => {
+  setEvidence = (evidence: { [name: string]: [string]}) => {
     this.removeAllEvidence()
     this.updateEvidence(evidence)
   }
@@ -211,8 +211,8 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const node = this._nodes.find(x => x.name === name)
     if (node) {
       const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
-      if (evidenceFunc.level != null) {
-        evidenceFunc.level = null
+      if (evidenceFunc.levels != null) {
+        evidenceFunc.levels = null
         this.clearCachedValues(evidenceFunc.id)
       }
     }
@@ -223,8 +223,8 @@ export class LazyPropagationEngine implements IInferenceEngine {
   removeAllEvidence = () =>
     this._nodes.forEach(node => {
       const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
-      if (evidenceFunc.level != null) {
-        evidenceFunc.level = null
+      if (evidenceFunc.levels != null) {
+        evidenceFunc.levels = null
         this.clearCachedValues(evidenceFunc.id)
       }
     })

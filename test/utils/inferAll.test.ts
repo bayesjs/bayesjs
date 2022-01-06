@@ -10,7 +10,7 @@ const hugeEngine = new InferenceEngine(hugeNetwork)
 
 describe('InferAll Utils', () => {
   describe('After mutating the distribution', () => {
-    engine.setEvidence({ EARTHQUAKE: 'T' })
+    engine.setEvidence({ EARTHQUAKE: ['T'] })
 
     it("returns inference result for all node's state", () => {
       engine.inferAll() // infer to cache
@@ -99,7 +99,7 @@ describe('InferAll Utils', () => {
 
       describe('Burglary True', () => {
         it("returns inference result for all node's state", () => {
-          engine.setEvidence({ BURGLARY: 'T' })
+          engine.setEvidence({ BURGLARY: ['T'] })
           expect(engine.inferAll({ precision: 8 })).toEqual({
             BURGLARY: { T: 1, F: 0 },
             EARTHQUAKE: { T: 0.002, F: 0.998 },
@@ -112,7 +112,7 @@ describe('InferAll Utils', () => {
 
       describe('Burglary True and Earthquake True', () => {
         it("returns inference result for all node's state", () => {
-          engine.updateEvidence({ EARTHQUAKE: 'T' })
+          engine.updateEvidence({ EARTHQUAKE: ['T'] })
           expect(engine.inferAll({ precision: 8 })).toEqual({
             BURGLARY: { T: 1, F: 0 },
             EARTHQUAKE: { T: 1, F: 0 },

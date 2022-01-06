@@ -51,11 +51,11 @@ export interface IInferenceEngine {
 
   // Provide evidence for one or more variables in the Bayesian network,
   // and remove all evidence for variables that are not provided.
-  setEvidence: (evidence: { [name: string]: string }) => void;
+  setEvidence: (evidence: { [name: string]: [string] }) => void;
   // Provide evidence for one or more variables in the Bayesian network.
   // Variables that are not mentioned in the input retain any previous
   // evidence.
-  updateEvidence: (evidence: { [name: string]: string }) => void;
+  updateEvidence: (evidence: { [name: string]: [string] }) => void;
   // Remove the evidence for the specified variable.
   removeEvidence: (name: string) => void;
   // remove the evidence for all the variables in the network.

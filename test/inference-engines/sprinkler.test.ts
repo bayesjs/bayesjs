@@ -6,7 +6,7 @@ import { InferenceEngine } from '../../src/index'
 
 const infersGiveSprinklerTrue = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ SPRINKLER: 'T' })
+  engine.setEvidence({ SPRINKLER: ['T'] })
 
   expect(infer({ RAIN: ['T'] }).toFixed(4)).toBe('0.0062')
   expect(infer({ RAIN: ['F'] }).toFixed(4)).toBe('0.9938')
@@ -16,7 +16,7 @@ const infersGiveSprinklerTrue = (engine: IInferenceEngine) => {
 
 const infersGiveSprinklerFalse = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ SPRINKLER: 'F' })
+  engine.setEvidence({ SPRINKLER: ['F'] })
 
   expect(infer({ RAIN: ['T'] }).toFixed(4)).toBe('0.2920')
   expect(infer({ RAIN: ['F'] }).toFixed(4)).toBe('0.7080')
@@ -26,7 +26,7 @@ const infersGiveSprinklerFalse = (engine: IInferenceEngine) => {
 
 const infersGiveRainTrue = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ RAIN: 'T' })
+  engine.setEvidence({ RAIN: ['T'] })
 
   expect(infer({ SPRINKLER: ['T'] }).toFixed(4)).toBe('0.0100')
   expect(infer({ SPRINKLER: ['F'] }).toFixed(4)).toBe('0.9900')
@@ -36,7 +36,7 @@ const infersGiveRainTrue = (engine: IInferenceEngine) => {
 
 const infersGiveRainFalse = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ RAIN: 'F' })
+  engine.setEvidence({ RAIN: ['F'] })
 
   expect(infer({ SPRINKLER: ['T'] }).toFixed(4)).toBe('0.4000')
   expect(infer({ SPRINKLER: ['F'] }).toFixed(4)).toBe('0.6000')
@@ -46,7 +46,7 @@ const infersGiveRainFalse = (engine: IInferenceEngine) => {
 
 const infersGiveGrassWetTrue = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ GRASS_WET: 'T' })
+  engine.setEvidence({ GRASS_WET: ['T'] })
 
   expect(infer({ RAIN: ['T'] }).toFixed(4)).toBe('0.3577')
   expect(infer({ RAIN: ['F'] }).toFixed(4)).toBe('0.6423')
@@ -56,7 +56,7 @@ const infersGiveGrassWetTrue = (engine: IInferenceEngine) => {
 
 const infersGiveGrassWetFalse = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ GRASS_WET: 'F' })
+  engine.setEvidence({ GRASS_WET: ['F'] })
 
   expect(infer({ RAIN: ['T'] }).toFixed(4)).toBe('0.0718')
   expect(infer({ RAIN: ['F'] }).toFixed(4)).toBe('0.9282')

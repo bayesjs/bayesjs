@@ -92,7 +92,7 @@ const infersGiveNoEvidence = (engine: IInferenceEngine) => {
 
 const infersGiveNode1True = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ node1: 'T' })
+  engine.setEvidence({ node1: ['T'] })
 
   expect(infer({ node1: ['T'] }).toFixed(4)).toBe('1.0000')
   expect(infer({ node1: ['F'] }).toFixed(4)).toBe('0.0000')
@@ -178,7 +178,7 @@ const infersGiveNode1True = (engine: IInferenceEngine) => {
 
 const infersGiveNode1False = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ node1: 'F' })
+  engine.setEvidence({ node1: ['F'] })
 
   expect(infer({ node1: ['T'] }).toFixed(4)).toBe('0.0000')
   expect(infer({ node1: ['F'] }).toFixed(4)).toBe('1.0000')
@@ -264,7 +264,7 @@ const infersGiveNode1False = (engine: IInferenceEngine) => {
 
 const infersGiveNode39True = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ node39: 'T' })
+  engine.setEvidence({ node39: ['T'] })
 
   expect(infer({ node1: ['T'] }).toFixed(4)).toBe('0.9802')
   expect(infer({ node1: ['F'] }).toFixed(4)).toBe('0.0198')
@@ -350,7 +350,7 @@ const infersGiveNode39True = (engine: IInferenceEngine) => {
 
 const infersGiveNode39False = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ node39: 'F' })
+  engine.setEvidence({ node39: ['F'] })
 
   expect(infer({ node1: ['T'] }).toFixed(4)).toBe('0.9802')
   expect(infer({ node1: ['F'] }).toFixed(4)).toBe('0.0198')
@@ -436,7 +436,7 @@ const infersGiveNode39False = (engine: IInferenceEngine) => {
 
 const infersGiveNode36True = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ node36: 'T' })
+  engine.setEvidence({ node36: ['T'] })
 
   expect(infer({ node1: ['T'] }).toFixed(4)).toBe('0.0000')
   expect(infer({ node1: ['F'] }).toFixed(4)).toBe('0.0000')
@@ -522,7 +522,7 @@ const infersGiveNode36True = (engine: IInferenceEngine) => {
 
 const infersGiveNode36False = (engine: IInferenceEngine) => {
   const { infer } = engine
-  engine.setEvidence({ node36: 'F' })
+  engine.setEvidence({ node36: ['F'] })
 
   expect(infer({ node1: ['T'] }).toFixed(4)).toBe('0.9802')
   expect(infer({ node1: ['F'] }).toFixed(4)).toBe('0.0198')

@@ -6,7 +6,7 @@ import { InferenceEngine } from '../../src/index'
 import { fromCPT } from '../../src/engines'
 
 const infersAlarmGiveBurglaryTrue = (engine: IInferenceEngine) => {
-  engine.setEvidence({ BURGLARY: 'T' })
+  engine.setEvidence({ BURGLARY: ['T'] })
   const { infer } = engine
 
   expect(infer({ EARTHQUAKE: ['T'] }).toFixed(4)).toBe('0.0020')
@@ -20,7 +20,7 @@ const infersAlarmGiveBurglaryTrue = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveBurglaryFalse = (engine: IInferenceEngine) => {
-  engine.setEvidence({ BURGLARY: 'F' })
+  engine.setEvidence({ BURGLARY: ['F'] })
   const { infer } = engine
 
   expect(infer({ EARTHQUAKE: ['T'] }).toFixed(4)).toBe('0.0020')
@@ -34,7 +34,7 @@ const infersAlarmGiveBurglaryFalse = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveEathQuakeTrue = (engine: IInferenceEngine) => {
-  engine.setEvidence({ EARTHQUAKE: 'T' })
+  engine.setEvidence({ EARTHQUAKE: ['T'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0010')
@@ -48,7 +48,7 @@ const infersAlarmGiveEathQuakeTrue = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveEathQuakeFalse = (engine: IInferenceEngine) => {
-  engine.setEvidence({ EARTHQUAKE: 'F' })
+  engine.setEvidence({ EARTHQUAKE: ['F'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0010')
@@ -62,7 +62,7 @@ const infersAlarmGiveEathQuakeFalse = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveAlarmTrue = (engine: IInferenceEngine) => {
-  engine.setEvidence({ ALARM: 'T' })
+  engine.setEvidence({ ALARM: ['T'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.3736')
@@ -76,7 +76,7 @@ const infersAlarmGiveAlarmTrue = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveAlarmFalse = (engine: IInferenceEngine) => {
-  engine.setEvidence({ ALARM: 'F' })
+  engine.setEvidence({ ALARM: ['F'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0001')
@@ -90,7 +90,7 @@ const infersAlarmGiveAlarmFalse = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveJohnCallsTrue = (engine: IInferenceEngine) => {
-  engine.setEvidence({ JOHN_CALLS: 'T' })
+  engine.setEvidence({ JOHN_CALLS: ['T'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0163')
@@ -104,7 +104,7 @@ const infersAlarmGiveJohnCallsTrue = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveJohnCallsFalse = (engine: IInferenceEngine) => {
-  engine.setEvidence({ JOHN_CALLS: 'F' })
+  engine.setEvidence({ JOHN_CALLS: ['F'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0002')
@@ -118,7 +118,7 @@ const infersAlarmGiveJohnCallsFalse = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveMaryCallsTrue = (engine: IInferenceEngine) => {
-  engine.setEvidence({ MARY_CALLS: 'T' })
+  engine.setEvidence({ MARY_CALLS: ['T'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0561')
@@ -132,7 +132,7 @@ const infersAlarmGiveMaryCallsTrue = (engine: IInferenceEngine) => {
 }
 
 const infersAlarmGiveMaryCallsFalse = (engine: IInferenceEngine) => {
-  engine.setEvidence({ MARY_CALLS: 'F' })
+  engine.setEvidence({ MARY_CALLS: ['F'] })
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0003')
@@ -158,7 +158,7 @@ const infersSetDistribution = (engine: IInferenceEngine) => {
   expect(infer({ JOHN_CALLS: ['T'] }).toFixed(4)).toBe('0.0629')
   expect(infer({ JOHN_CALLS: ['F'] }).toFixed(4)).toBe('0.9371')
 
-  engine.updateEvidence({ JOHN_CALLS: 'T' })
+  engine.updateEvidence({ JOHN_CALLS: ['T'] })
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.2133')
   expect(infer({ BURGLARY: ['F'] }).toFixed(4)).toBe('0.7867')
   expect(infer({ EARTHQUAKE: ['T'] }).toFixed(4)).toBe('0.0040')

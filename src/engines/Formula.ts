@@ -186,7 +186,7 @@ export class EvidenceFunction {
   id = -1;
   kind = FormulaType.EVIDENCE_FUNCTION;
   nodeId: number;
-  level: number | null ;
+  levels: number[] | null ;
   name: string;
   domain: number[];
   numberOfLevels: number[];
@@ -195,7 +195,7 @@ export class EvidenceFunction {
 
   constructor (node: FastNode) {
     this.nodeId = node.id
-    this.level = null
+    this.levels = null
     this.domain = [node.id]
     this.name = `ϵ(${node.id})`
     this.numberOfLevels = [node.levels.length]
