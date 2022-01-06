@@ -95,7 +95,8 @@ export class Distribution {
 
   /** Test if the distribution has a parent variable with the given name.
    * @param name: the name of the parent variable to test
-   */ hasParentVariable (name: string): boolean {
+   */
+  hasParentVariable (name: string): boolean {
     const idx = this._variableNames.findIndex(str => str === name)
     return idx >= this._numberOfHeadVariables
   }
@@ -231,6 +232,32 @@ export class Distribution {
     this._variableLevels[Idx][oldIdx] = newLevel
   }
 
+  getPotentials () {
+    return [...this._potentialFunction]
+  }
+
+  setPotentials (potentials: FastPotential) {
+    const numberOfLevels = this._variableLevels.map(x => x.length)
+    if (potentials.length !== product(numberOfLevels)) { throw new Error('Cannot set the potentials for the distribution.   The provided array has the wrong number of elements.') }
+    // verify that each block of a conditional distribution is non-zero
+    let total = 0
+    let subtotal = 0
+    potentials.forEach((p, i) => {
+      const combos = indexToCombination(i, numberOfLevels)
+      const headLevels = combos.slice(0, this._numberOfHeadVariables)
+      if (i > 0 && headLevels.every(x => x === 0)) {
+        if (subtotal === 0) throw new Error('Cannot set the potentials for the distribution.  The probabilities are undefined for some combinations of the parent varaibles')
+        subtotal = 0
+      }
+
+      if (subtotal === 0) throw new Error('Cannot set the potentials for the distribution.  The probabilities are undefined for some combinations of the parent varaibles')
+      if (total === 0) throw new Error('Cannot set the potentials for the distribution.  The probabilities are all zero.')
+      subtotal += p
+      total += p
+    })
+    this._potentialFunction = potentials.map(p => p / total)
+  }
+
   /** Add a head variable to distribution.  This function will add the
    * variable in such a way that the marginal distribution of the
    * variable will be uniform, and the removal of the variable recovers
@@ -333,47 +360,74 @@ export class Distribution {
 
   /** Infer the probability of an event conditioned upon hard evidence for its
    * parent variables.
-   * @param event - a mapping from the head variables to an outcome level
+   * @param event - a mapping from the head variables to an outcome level.   At least
+   *   one level must be provided for each head variable.  When more than one level is
+   *   provided, then the cumulative probability will be returned
    * @param evidence - a mapping from the parent variables to their hard evidence.
+   *   At least one level must be provided for each parent variable.   When more than
+   *   one level is provided, then the evidence is treated as soft evidence for that
+   *   parent variable.
    * @returns the joint probability of observing the given event subject to the
-   *   hard evidence.
+   *   evidence.
    * @throws If the caller does not provide event level for each head variable
    *   or hard evidence for each parent variable then this function will throw
    *   an error.
   */
-  infer (event: { [name: string]: string }, evidence?: {[name: string]: string}) {
+  infer (event: { [name: string]: string[] }, evidence?: {[name: string]: string[]}) {
     const headVariableNames = Object.keys(event)
     const parentVariableNames = Object.keys(evidence || {})
+
+    if (headVariableNames.some(x => this._variableNames.indexOf(x) >= this._numberOfHeadVariables)) throw new Error('Cannot infer probability.   The event contains evidence for one or more parent variables')
+    if (parentVariableNames.some(x => {
+      const idx = this._variableNames.indexOf(x)
+      return idx >= 0 && idx < this._numberOfHeadVariables
+    })) throw new Error('Cannot infer probability.   The evidence contains events for one or more head variables')
+
     const validHeadVariableNames = uniq(headVariableNames.filter(x => this.hasHeadVariable(x)))
     const validParentVariableNames = uniq(parentVariableNames.filter(x => this.hasParentVariable(x)))
 
     if (validHeadVariableNames.length < this._numberOfHeadVariables) throw new Error('Cannot infer probability.  The event must contain levels for each head variable.')
     if (validParentVariableNames.length < this._variableNames.length - this._numberOfHeadVariables) throw new Error('Cannot infer probability.  You must provide evidence for each parent variable.')
-    if (parentVariableNames.length > validParentVariableNames.length) return 0
-    if (headVariableNames.length > validHeadVariableNames.length) return 0
-
-    const combo = this._variableNames.map((name, i) => {
-      const level: string = i < this._numberOfHeadVariables ? event[name] : evidence ? evidence[name] : ''
-      return this._variableLevels[i].findIndex(x => x === level)
+    // NOTE: if the given parent or head variable names include variables that are not part of
+    // the distribution, then we can assume that the result is conditionally independent of
+    // of the levels of those variables, and ignore them.
+    const levels: number[][] = this._variableNames.map((name, i) => {
+      const ls = i < this._numberOfHeadVariables ? event[name] : evidence ? evidence[name] : []
+      return uniq(ls).map(l => this._variableLevels[i].indexOf(l)).filter(x => x >= 0)
     })
-    // if any of the variables are provided a level that doesn't exist on the variable, then
-    // we don't need to look up a value in the potential function.   The probability is zero.
-    if (combo.some(i => i < 0)) return 0
-    const numberOfLevels = this._variableLevels.map(xs => xs.length)
-    const idx = combinationToIndex(combo, numberOfLevels)
-    const p: number = this._potentialFunction[idx]
-    if (validParentVariableNames.length > 0) {
-      const desiredParentValues = combo.slice(this._numberOfHeadVariables)
-      const qs = this._potentialFunction.filter((v, i) => {
-        const parentValues = indexToCombination(i, numberOfLevels).slice(this._numberOfHeadVariables)
-        return parentValues.every((v, i) => v === desiredParentValues[i])
-      })
-      const q = sum(qs)
-      if (q === 0) throw new Error('Cannot infer conditional probability.   The marginal probability of the evidence is zero.')
-      return p / q
-    } else {
-      return p
-    }
+    // if we have reached this point and any of the variables have no levels, then
+    // only "invalid" levels were specified.   If the invalid values were specified
+    // for head variables, then the probability will be exactly zero.   If they were
+    // provided for any of the parent variables, then the probability will be undefined.
+    // Throw an error to alert the caller of the ill formed request.
+    if (levels.slice(0, this._numberOfHeadVariables).some(x => x.length === 0)) return 0
+    if (levels.some(x => x.length === 0)) throw new Error('Cannot infer probability.  The evidence for each parent must contain at least one valid level')
+    // All is good.   Compute the joint probability conditioned upon the
+    // evidence.
+    const numberOfLevels: number[] = this._variableLevels.map((x) => x.length)
+
+    let acc = 0
+    let total = 0
+    // traverse the elements of the potential function.   For each
+    // entry that matches the given event and evidence, then accumulate
+    // the probability into q.   Keep a running total of all the
+    // entries that match the evidence -- this will be needed as a
+    // normalization factor.
+    this._potentialFunction.forEach((p, i) => {
+      const combos: number[] = indexToCombination(i, numberOfLevels)
+      if (combos.every((lvlIdx, varIdx) => levels[varIdx].includes(lvlIdx))) { acc += p }
+      if (
+        combos.every(
+          (lvlIdx, varIdx) =>
+            varIdx < this._numberOfHeadVariables || levels[varIdx].includes(lvlIdx),
+        )
+      ) { total += p }
+    })
+    // If the number of parent variables is zero, then the total is the
+    // join marginal distribution, and needs to be divided by q to obtain
+    // the conditional.
+    if (this._numberOfHeadVariables === this._variableNames.length) return acc
+    else return acc / total
   }
 
   // This is a back door for obtaining all the private collections in the distribution.
@@ -427,7 +481,6 @@ export class Distribution {
 // specifying a probability distribution.
 export function fromCPT (name: string, cpt: ICptWithParents | ICptWithoutParents) {
   if (Array.isArray(cpt)) {
-    // The CPT has parents
     const parentNames = cpt.reduce((acc: string[], row) => union(acc, Object.keys(row.when)), [])
     const parentLevels: string[][] = parentNames.map(pname =>
       cpt.reduce((acc: string[], row) => {
@@ -460,7 +513,6 @@ export function fromCPT (name: string, cpt: ICptWithParents | ICptWithoutParents
     const normalizedResult = result.map(x => x / total)
     return new Distribution([{ name, levels: headLevels }], parents, normalizedResult)
   } else {
-    // the cpt has no parents.
     const levels = uniq(Object.keys(cpt))
     if (levels.length === 0) throw new Error(`Cannot create distribution for variable ${name}.  It has no levels`)
     const v: {name: string; levels: string[]} = { name, levels }

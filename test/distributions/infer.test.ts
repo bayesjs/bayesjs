@@ -5,56 +5,53 @@ import { InferenceEngine } from '../../src/index'
 
 const engine = new InferenceEngine(network)
 
-function infer (event: { [name: string]: string}, evidence: { [name: string]: string}, precision: number) {
+function infer (event: { [name: string]: string[]}, evidence: { [name: string]: string[]}, precision: number) {
   const dist = engine.getJointDistribution(Object.keys(event), Object.keys(evidence))
   return Number.parseFloat(dist.infer(event, evidence).toPrecision(precision))
 }
 
 describe('should infer the correct liklihood for a distribution', () => {
   it('of one head variable', () => {
-    const observed = infer({ node11: 'T' }, {}, 4)
+    const observed = infer({ node11: ['T'] }, {}, 4)
     expect(observed).toEqual(0.9900)
   })
   it('of two head variables', () => {
-    const observed = infer({ node11: 'T', node22: 'F' }, {}, 4)
+    const observed = infer({ node11: ['T'], node22: ['F'] }, {}, 4)
     expect(observed).toEqual(0.0099)
   })
   it('of one head variable and one parent variable', () => {
-    const observed = infer({ node11: 'T' }, { node22: 'F' }, 4)
+    const observed = infer({ node11: ['T'] }, { node22: ['F'] }, 4)
     expect(observed).toEqual(0.99)
   })
   it('of one head variable and two parent variables', () => {
-    const observed = infer({ node11: 'T' }, { node22: 'F', node31: 'F' }, 4)
+    const observed = infer({ node11: ['T'] }, { node22: ['F'], node31: ['F'] }, 4)
     expect(observed).toEqual(0.99)
   })
   it('of two head variable and one parent variables', () => {
-    const observed = infer({ node11: 'T', node22: 'F' }, { node31: 'F' }, 4)
+    const observed = infer({ node11: ['T'], node22: ['F'] }, { node31: ['F'] }, 4)
     expect(observed).toEqual(0.0099)
   })
   it('of three head variables and one parent variables', () => {
-    const observed = infer({ node11: 'T', node22: 'F', node16: 'F' }, { node31: 'F' }, 4)
+    const observed = infer({ node11: ['T'], node22: ['F'], node16: ['F'] }, { node31: ['F'] }, 4)
     expect(observed).toEqual(0.000099)
   })
   it('of two head variables and two parent variables', () => {
-    const observed = infer({ node11: 'T', node22: 'F' }, { node16: 'F', node31: 'F' }, 4)
+    const observed = infer({ node11: ['T'], node22: ['F'] }, { node16: ['F'], node31: ['F'] }, 4)
     expect(observed).toEqual(0.0099)
   })
   it('infer should throw an error when not all head variables are provided', () => {
     const dist = engine.getJointDistribution(['node1', 'node2'], ['node3'])
-    expect(() => dist.infer({ node1: 'T' }, { node3: 'F' })).toThrow()
+    expect(() => dist.infer({ node1: ['T'] }, { node3: ['F'] })).toThrow()
   })
   it('infer should throw an error when not all parent variables are provided', () => {
     const dist = engine.getJointDistribution(['node1', 'node2'], ['node3'])
-    expect(() => dist.infer({ node1: 'T', node2: 'F' })).toThrow()
+    expect(() => dist.infer({ node1: ['T'], node2: ['F'] })).toThrow()
   })
   it('infer should return zero when a invalid level is provided for a head variable', () => {
-    const observed = infer({ node1: 'Z' }, { node2: 'T' }, 4)
+    const observed = infer({ node1: ['Z'] }, { node2: ['T'] }, 4)
     expect(observed).toEqual(0)
   })
-  it('infer should return zero when a invalid level is provided for a parent variable', () => {
-    const observed = infer({ node1: 'T' }, { node2: 'Z' }, 4)
-    expect(observed).toEqual(0)
-  })
+  it('infer should throw when only invalid levels are provided for a parent variable', () => expect(() => infer({ node1: ['T'] }, { node2: ['Z'] }, 4)).toThrow())
   it('it should infer the correct probability for a junction forest.', () => {
     const disconnected = new InferenceEngine({
       A: { levels: ['T', 'F'], parents: [], potentialFunction: [0.1, 0.9] },

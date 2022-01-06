@@ -1,4 +1,4 @@
-import { INetworkResult, ICombinations, IInferAllOptions } from '.'
+import { INetworkResult, IInferAllOptions } from '.'
 import { Distribution } from '../engines'
 
 /**
@@ -62,8 +62,10 @@ export interface IInferenceEngine {
   removeAllEvidence: () => void;
 
   // Given an event, query the network.   Return the probability of the
-  // event given any evidence that has been provided.
-  infer: (event: ICombinations) => number;
+  // event given any evidence that has been provided. when more than one
+  // level has been provided for a variable, the cumulative probability
+  // will be computed.
+  infer: (event: {[name: string]: string[] }) => number;
 
   // Query the Bayes network to get the marginal distributions for
   // all variables, given any evidence that has been provided.  The

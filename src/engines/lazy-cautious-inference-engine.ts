@@ -2,7 +2,7 @@ import {
   INetworkResult,
   IInferenceEngine, IInferAllOptions, ICptWithParents, ICptWithoutParents,
 } from '../types'
-import { clone } from 'ramda'
+import { clone, uniq } from 'ramda'
 import roundTo = require('round-to')
 
 import { FastPotential, indexToCombination } from './FastPotential'
@@ -134,7 +134,6 @@ export class LazyPropagationEngine implements IInferenceEngine {
     this.getJointDistribution([name], this._nodes.find(x => x.name === name)?.parents.map(i => this._nodes[i].name) || [])
 
   getJointDistribution = (headVariables: string[], parentVariables: string[]): Distribution => {
-    // Sanity Checks
     const err = (reason: string) => {
       const msg = 'Cannot construct the joint distribution for the given head and parent variables.  ' + reason
       throw new Error(msg)
@@ -233,9 +232,9 @@ export class LazyPropagationEngine implements IInferenceEngine {
   /** Given a single node,  infer the probability of an event from the
    * posterior marginal distribution for that node.
    */
-  private inferFromMarginal (nodeId: NodeId, level: number): number {
+  private inferFromMarginal (nodeId: NodeId, levels: number[]): number {
     const p = evaluate(this._nodes[nodeId].posteriorMarginal, this._nodes, this._formulas, this._potentials)
-    return p[level]
+    return levels.reduce((acc, level) => p[level], 0)
   }
 
   /** Given a collection of nodes and levels representing an event, construct the
@@ -244,7 +243,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
    * that contain the nodes.   This is expensive, and should be cached to avoid
    * expensive recomputation.  This is left as future work.
    */
-  private inferFromJointDistribution (nodeIds: NodeId[], event: {[name: string]: string}): number {
+  private inferFromJointDistribution (nodeIds: NodeId[], event: {[name: string]: string[]}): number {
     const names = Object.keys(event)
     console.warn(`The requested join (${names.join(', ')} are not in the same clique of the junction tree)`)
     console.warn('Use \'getJointDistribution\' to efficiently make repeated inferences.')
@@ -257,7 +256,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
    * by totalizing all the corresponding rows in the cliques posterior marginal
    * potential function.
    */
-  private inferFromClique (nodeIds: NodeId[], levels: number[], cliqueId: CliqueId) {
+  private inferFromClique (nodeIds: NodeId[], levels: number[][], cliqueId: CliqueId) {
     const clique = this._cliques[cliqueId]
     const formulaId = clique.posterior
     const formula = this._formulas[formulaId]
@@ -266,14 +265,16 @@ export class LazyPropagationEngine implements IInferenceEngine {
     let total = 0
     potential.forEach((p, i) => {
       const combos = indexToCombination(i, formula.numberOfLevels)
-      if (idxs.every((idx, j) => combos[idx] === levels[j])) total += p
+      if (idxs.every((idx, j) => levels[j].includes(combos[idx]))) total += p
     })
     return total
   }
 
   // Implementation of the infer interface function.  This function
-  // lazily evaluates the requested potential.
-  infer = (event: { [name: string]: string}) => {
+  // lazily evaluates the requested potential.  If more than one value
+  // is provided for the event, then the cumulative probability over
+  // the provided levels is returned.
+  infer = (event: { [name: string]: string[]}) => {
     const names = Object.keys(event)
     // If the empty event has been provided, then the probability is
     // trivially equal to unity.
@@ -290,12 +291,16 @@ export class LazyPropagationEngine implements IInferenceEngine {
     // If we reached here, all the names are actually variables/nodes in the
     // Bayes network.   We need to check that all the provided levels are
     // valid outcomes for each variable.
-    const levels: number[] = names.map((name, i) => this._nodes[idxs[i]].levels.findIndex(lvl => lvl === event[name]))
+    const levels: number[][] = names.map((name, i) => {
+      const lvls = event[name] || []
+      const node = this._nodes[idxs[i]]
+      return uniq(lvls.map(x => node.levels.indexOf(x)).filter(x => x >= 0))
+    })
 
     // In the case where any of the levels that were provided are not valid
     // outcomes for the corresponding variable, then the probability
     // is exactly zero.
-    if (levels.some(lvl => lvl === -1)) return 0
+    if (levels.some(lvl => lvl.length === 0)) return 0
 
     // If we reached here, then all the names and levels are valid.
     // If only one name has been provided, then we are tasked with inferring
@@ -320,8 +325,8 @@ export class LazyPropagationEngine implements IInferenceEngine {
     this._nodes.forEach(fastnode => {
       result[fastnode.name] = {}
       fastnode.levels.forEach(level => {
-        const event: { [level: string]: string} = {}
-        event[fastnode.name] = level
+        const event: { [level: string]: string[]} = {}
+        event[fastnode.name] = [level]
         const p = this.infer(event)
         if (options && options.precision != null && options.precision > 0) {
           result[fastnode.name][level] = roundTo(p, options.precision)

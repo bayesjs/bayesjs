@@ -17,5 +17,7 @@ export const infer: IInfer = (network: INetwork, nodes: ICombinations, given: IC
   })
   const engine = new LazyPropagationEngine(net)
   engine.setEvidence(given)
-  return engine.infer(nodes)
+  const headVariables: {[name: string]: string[]} = {}
+  Object.entries(nodes).forEach(([name, level]) => { headVariables[name] = [level] })
+  return engine.infer(headVariables)
 }
