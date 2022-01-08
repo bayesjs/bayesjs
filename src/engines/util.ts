@@ -13,6 +13,14 @@ import { ICptWithParentsItem, ICptWithoutParents, ICptWithParents } from '../typ
 import { Distribution, fromCPT } from './Distribution'
 import { evaluateMarginalPure } from './evaluation'
 
+// create a comma separated list of strings with an and separating the last elements.
+export function commaSep (strings: string[]): string {
+  if (strings.length === 0) return ''
+  if (strings.length === 1) return strings[0]
+  if (strings.length === 2) return strings.join(' and ')
+  return strings.slice(0, strings.length - 1).join(', ') + ' and ' + strings[strings.length - 1]
+}
+
 export function setDistribution (distribution: Distribution, nodes: FastNode[], potentials: (FastPotential|null)[]): NodeId {
   const [headVar, ...others] = distribution.getHeadVariables()
   const { name } = headVar

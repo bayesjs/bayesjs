@@ -180,7 +180,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
   }
 
   // implementation of the updateEvidence interface function.
-  updateEvidence = (evidence: { [name: string]: [string]}) => {
+  updateEvidence = (evidence: { [name: string]: string[]}) => {
     Object.keys(evidence).forEach(name => {
       const node = this._nodes.find(x => x.name === name)
       if (node) {
@@ -195,7 +195,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
   }
 
   // Implementation of the setEvidence interface function.
-  setEvidence = (evidence: { [name: string]: [string]}) => {
+  setEvidence = (evidence: { [name: string]: string[]}) => {
     this.removeAllEvidence()
     this.updateEvidence(evidence)
   }
@@ -234,7 +234,7 @@ export class LazyPropagationEngine implements IInferenceEngine {
    */
   private inferFromMarginal (nodeId: NodeId, levels: number[]): number {
     const p = evaluate(this._nodes[nodeId].posteriorMarginal, this._nodes, this._formulas, this._potentials)
-    return levels.reduce((acc, level) => p[level], 0)
+    return levels.reduce((acc, level) => acc + p[level], 0)
   }
 
   /** Given a collection of nodes and levels representing an event, construct the

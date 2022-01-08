@@ -2,6 +2,7 @@ import { FastPotential, combinationToIndex, indexToCombination } from './FastPot
 import { product, uniq, sum, max, union } from 'ramda'
 import { evaluateMarginalPure } from './evaluation'
 import { ICptWithParents, ICptWithoutParents } from '../types'
+import { commaSep } from './util'
 
 /** A Distribution represents a joint distribution of one (trivially) or more
    * "head" variables, optionally conditioned upon one or more parent variables.
@@ -25,7 +26,7 @@ export class Distribution {
    */
   constructor (headVariables: {name: string; levels: string[]}[], parentVariables: {name: string; levels: string[]}[], potentialFunction?: FastPotential) {
     function throwErr (reason: string) {
-      throw new Error('Cannot construct joint distribution over the given variables' + (parentVariables.length > 0) ? ' conditioned on the given parent variables.  ' : '.  ' + reason)
+      throw new Error(`Cannot construct joint distribution for ${commaSep(headVariables.map(x => x.name))}${parentVariables.length > 0 ? ` conditioned on ${commaSep(parentVariables.map(x => x.name))}.  ` : '.  '} ${reason}`)
     }
     if (headVariables.length < 1) throwErr('you provided no head variables.')
     const distinctHeadVariableNames = [...new Set(headVariables.map(x => x.name))]
@@ -46,7 +47,8 @@ export class Distribution {
     })
     this._numberOfHeadVariables = headVariables.length
     if (potentialFunction) {
-      if (potentialFunction.length !== product(this._variableLevels.map(x => x.length))) throwErr('The potential function does not have enough elements.')
+      const expectedlength = product(this._variableLevels.map(x => x.length))
+      if (potentialFunction.length !== expectedlength) throwErr(`Expecting the potential function to have ${expectedlength} elements but found ${potentialFunction.length}`)
       this._potentialFunction = potentialFunction
     } else {
       const len = product(this._variableLevels.map(x => x.length))
