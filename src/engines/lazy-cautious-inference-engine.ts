@@ -2,7 +2,7 @@ import {
   INetworkResult,
   IInferenceEngine, IInferAllOptions, ICptWithParents, ICptWithoutParents,
 } from '../types'
-import { clone, uniq } from 'ramda'
+import { clone, uniq, difference } from 'ramda'
 import roundTo = require('round-to')
 
 import { FastPotential, indexToCombination } from './FastPotential'
@@ -134,18 +134,22 @@ export class LazyPropagationEngine implements IInferenceEngine {
     this.getJointDistribution([name], this._nodes.find(x => x.name === name)?.parents.map(i => this._nodes[i].name) || [])
 
   getJointDistribution = (headVariables: string[], parentVariables: string[]): Distribution => {
-    const err = (reason: string) => {
-      const msg = 'Cannot construct the joint distribution for the given head and parent variables.  ' + reason
-      throw new Error(msg)
-    }
-    if (headVariables.some(name => this.hasEvidenceFor(name))) err('Hard evidence has been provided for some of the head variables.')
-    if (parentVariables.some(name => this.hasEvidenceFor(name))) err('Hard evidence has been provided for some of the parent variables.')
-
     const parentIdxs: number[] = parentVariables.map(s => this._nodes.findIndex(node => node.name === s))
     const headIdxs: number[] = headVariables.map(s => this._nodes.findIndex(node => node.name === s))
     this._formulas.forEach(f => evaluate(f.id, this._nodes, this._formulas, this._potentials))
     const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._separators, this._formulas, this._potentials, headIdxs, parentIdxs)
-    return new Distribution(headVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], parentVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], potentialFunction)
+    const dist = new Distribution(headVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], parentVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], potentialFunction)
+
+    // remove any levels that contradict the current evidence.
+    parentIdxs.concat(headIdxs).forEach((idx) => {
+      const node = this._nodes[idx]
+      const evidence = this.getEvidence(node.name)
+      if (evidence && evidence.length > 0) {
+        difference(node.levels, evidence).forEach(level => dist.removeLevel(node.name, level))
+      }
+    })
+
+    return dist
   }
 
   // implementation of the setDistribution interface function.

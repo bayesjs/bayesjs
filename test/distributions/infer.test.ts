@@ -73,4 +73,10 @@ describe('should infer the correct liklihood for a distribution', () => {
     expected = [0.0696, 0.0464, 0.2784, 0.1856, 0.0504, 0.0336, 0.2016, 0.1344]
     expect(observed.map(x => Number.parseFloat(x.toPrecision(4)))).toEqual(expected)
   })
+  it('should infer the correct value when evidence is provided for one of the variables', () => {
+    engine.setEvidence({ node1: ['T'] })
+    const dist = engine.getJointDistribution(['node31', 'node1'], [])
+    expect(dist.infer({ node31: ['T'], node1: ['T'] })).toEqual(0.99)
+    expect(dist.infer({ node31: ['T'], node1: ['F'] })).toEqual(0)
+  })
 })
