@@ -1,29 +1,27 @@
 import * as expect from 'expect'
 
-import { allNodes } from '../../models/alarm'
-import { clone } from 'ramda'
-import { createNetwork } from '../../src/utils'
-import { allNodes as hugeNetworkAllNodes } from '../../models/huge-network'
-import { inferAll } from '../../src/utils/inferAll'
+import { network } from '../../models/alarm'
+import { network as hugeNetwork } from '../../models/huge-network'
+import { InferenceEngine, ICptWithParents } from '../../src/index'
+import { fromCPT } from '../../src/engines'
 
-const network = createNetwork(...allNodes)
-const hugeNetwork = createNetwork(...hugeNetworkAllNodes)
+const engine = new InferenceEngine(network)
+const hugeEngine = new InferenceEngine(hugeNetwork)
 
 describe('InferAll Utils', () => {
-  describe('When option "force" is true', () => {
-    const networkCloned = clone(network)
-    const given = { EARTHQUAKE: 'T' }
+  describe('After mutating the distribution', () => {
+    engine.setEvidence({ EARTHQUAKE: ['T'] })
 
     it("returns inference result for all node's state", () => {
-      inferAll(networkCloned, given) // infer to cache
+      engine.inferAll() // infer to cache
 
       // change network by mutation
-      networkCloned.JOHN_CALLS.cpt = [
+      engine.setDistribution(fromCPT('JOHN_CALLS', [
         { when: { ALARM: 'T' }, then: { T: 0.1, F: 0.9 } },
         { when: { ALARM: 'F' }, then: { T: 0.95, F: 0.05 } },
-      ]
+      ]))
 
-      expect(inferAll(networkCloned, given, { force: true })).toEqual({
+      expect(engine.inferAll({ precision: 8 })).toEqual({
         BURGLARY: {
           T: 0.001,
           F: 0.999,
@@ -53,7 +51,10 @@ describe('InferAll Utils', () => {
       describe('With alarm network', () => {
         describe('No evidences', () => {
           it("returns inference result for all node's state", () => {
-            expect(inferAll(network, {}, { precision: 4 })).toEqual({
+            engine.removeAllEvidence()
+            engine.setDistribution(fromCPT('JOHN_CALLS', network.JOHN_CALLS.cpt as ICptWithParents))
+
+            expect(engine.inferAll({ precision: 4 })).toEqual({
               BURGLARY: { T: 0.001, F: 0.999 },
               EARTHQUAKE: { T: 0.002, F: 0.998 },
               ALARM: { T: 0.0025, F: 0.9975 },
@@ -69,7 +70,7 @@ describe('InferAll Utils', () => {
       describe('With alarm network', () => {
         describe('No evidences', () => {
           it("returns inference result for all node's state", () => {
-            expect(inferAll(network, {}, { precision: 2 })).toEqual({
+            expect(engine.inferAll({ precision: 2 })).toEqual({
               BURGLARY: { T: 0, F: 1 },
               EARTHQUAKE: { T: 0, F: 1 },
               ALARM: { T: 0, F: 1 },
@@ -86,7 +87,7 @@ describe('InferAll Utils', () => {
     describe('With alarm network', () => {
       describe('No evidences', () => {
         it("returns inference result for all node's state", () => {
-          expect(inferAll(network)).toEqual({
+          expect(engine.inferAll({ precision: 8 })).toEqual({
             BURGLARY: { T: 0.001, F: 0.999 },
             EARTHQUAKE: { T: 0.002, F: 0.998 },
             ALARM: { T: 0.00251644, F: 0.99748356 },
@@ -98,7 +99,8 @@ describe('InferAll Utils', () => {
 
       describe('Burglary True', () => {
         it("returns inference result for all node's state", () => {
-          expect(inferAll(network, { BURGLARY: 'T' })).toEqual({
+          engine.setEvidence({ BURGLARY: ['T'] })
+          expect(engine.inferAll({ precision: 8 })).toEqual({
             BURGLARY: { T: 1, F: 0 },
             EARTHQUAKE: { T: 0.002, F: 0.998 },
             ALARM: { T: 0.94002, F: 0.05998 },
@@ -110,7 +112,8 @@ describe('InferAll Utils', () => {
 
       describe('Burglary True and Earthquake True', () => {
         it("returns inference result for all node's state", () => {
-          expect(inferAll(network, { BURGLARY: 'T', EARTHQUAKE: 'T' })).toEqual({
+          engine.updateEvidence({ EARTHQUAKE: ['T'] })
+          expect(engine.inferAll({ precision: 8 })).toEqual({
             BURGLARY: { T: 1, F: 0 },
             EARTHQUAKE: { T: 1, F: 0 },
             ALARM: { T: 0.95, F: 0.05 },
@@ -124,7 +127,7 @@ describe('InferAll Utils', () => {
     describe('With huge network', () => {
       describe('No evidences', () => {
         it("returns inference result for all node's state", () => {
-          expect(inferAll(hugeNetwork)).toEqual({
+          expect(hugeEngine.inferAll({ precision: 8 })).toEqual({
             node1: { T: 0.98019999, F: 0.01980001 },
             node2: { T: 0.99, F: 0.01 },
             node3: { T: 0.99, F: 0.01 },
