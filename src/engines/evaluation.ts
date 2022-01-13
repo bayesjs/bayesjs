@@ -33,7 +33,7 @@ type MaybeFastPotential = FastPotential | null
  *                                     |  a2 |  b2 | 0.2 * 0.6 |
  *                                     |  a3 |  b2 | 0.1 * 0.6 |
  */
-export const evaluateProductPure = (factorPotentials: FastPotential[], factorDomains: number[][], factorNumberOfLevels: number[][], productDomain: number[], productNumberOfLevels: number[], productSize: number): FastPotential => {
+export const evaluateProductPure = (factorPotentials: FastPotential[], factorDomains: number[][], factorNumberOfLevels: number[][], productDomain: number[], productNumberOfLevels: number[], productSize: number, normalizeResult = true): FastPotential => {
   // short cuts for nullary and unary products
   if (factorPotentials.length === 0) {
     const result: FastPotential = []
@@ -63,7 +63,7 @@ export const evaluateProductPure = (factorPotentials: FastPotential[], factorDom
   })
 
   // Cache the normalized potential function and return it.
-  const normalizedResult = total > 0 ? result.map(v => v / total) : result
+  const normalizedResult = total > 0 && normalizeResult ? result.map(v => v / total) : result
   return normalizedResult
 }
 
@@ -163,7 +163,7 @@ const evaluateProduct = (productFormula: Product, nodes: FastNode[], formulas: F
  *
  */
 
-export function evaluateMarginalPure (innerPotential: FastPotential, innerDomain: number[], innerNumberOfLevels: number[], marginalDomain: number[], marginalNumberOfLevels: number[], marginalSize: number): FastPotential {
+export function evaluateMarginalPure (innerPotential: FastPotential, innerDomain: number[], innerNumberOfLevels: number[], marginalDomain: number[], marginalNumberOfLevels: number[], marginalSize: number, normalizeResult = true): FastPotential {
   const IdxsToKeep: number[] = marginalDomain.map(x => innerDomain.findIndex(y => x === y))
   const result: number[] = Array(marginalSize).fill(0)
   let total = 0
@@ -181,7 +181,7 @@ export function evaluateMarginalPure (innerPotential: FastPotential, innerDomain
     total += v
   })
   // Normalize the potential so that it is a probability distribution.
-  const normalizedResult = total > 0 ? result.map(v => v / total) : result
+  const normalizedResult = total > 0 && normalizeResult ? result.map(v => v / total) : result
   return normalizedResult
 }
 

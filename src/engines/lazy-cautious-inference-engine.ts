@@ -2,7 +2,7 @@ import {
   INetworkResult,
   IInferenceEngine, IInferAllOptions, ICptWithParents, ICptWithoutParents,
 } from '../types'
-import { clone, uniq, difference } from 'ramda'
+import { clone, uniq } from 'ramda'
 import roundTo = require('round-to')
 
 import { FastPotential, indexToCombination } from './FastPotential'
@@ -14,7 +14,7 @@ import { propagatePotentials } from './symbolic-propagation'
 import { evaluate } from './evaluation'
 import { getNetworkInfo, initializeCliques, initializeEvidence, initializeNodeParents, initializeNodes, initializePosteriorCliquePotentials, initializePosteriorNodePotentials, initializePriorNodePotentials, initializeSeparatorPotentials, NetworkInfo, upsertFormula, setDistribution } from './util'
 import { Distribution } from './Distribution'
-import { arbitraryJoin } from './arbitrary-join'
+import { arbitraryJoin, inferArbitraryJointProbability } from './arbitrary-join'
 
 /** This inference engine uses a modified version of the lazy cautious message
  * propigation strategy described in:
@@ -137,17 +137,17 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const parentIdxs: number[] = parentVariables.map(s => this._nodes.findIndex(node => node.name === s))
     const headIdxs: number[] = headVariables.map(s => this._nodes.findIndex(node => node.name === s))
     this._formulas.forEach(f => evaluate(f.id, this._nodes, this._formulas, this._potentials))
-    const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._separators, this._formulas, this._potentials, headIdxs, parentIdxs)
+    const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._formulas, this._potentials, this._separators, this._separatorPotentials, headIdxs, parentIdxs)
     const dist = new Distribution(headVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], parentVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], potentialFunction)
 
-    // remove any levels that contradict the current evidence.
-    parentIdxs.concat(headIdxs).forEach((idx) => {
-      const node = this._nodes[idx]
-      const evidence = this.getEvidence(node.name)
-      if (evidence && evidence.length > 0) {
-        difference(node.levels, evidence).forEach(level => dist.removeLevel(node.name, level))
-      }
-    })
+    // // remove any levels that contradict the current evidence.
+    // parentIdxs.concat(headIdxs).forEach((idx) => {
+    //   const node = this._nodes[idx]
+    //   const evidence = this.getEvidence(node.name)
+    //   if (evidence && evidence.length > 0) {
+    //     difference(node.levels, evidence).forEach(level => dist.removeLevel(node.name, level))
+    //   }
+    // })
 
     return dist
   }
@@ -183,13 +183,26 @@ export class LazyPropagationEngine implements IInferenceEngine {
     return result
   }
 
+  // Get all the evidence provided for the network
+  getAllEvidence= () => {
+    const result: { [name: string]: string[]} = {}
+    this.getVariables().forEach(name => {
+      const ls: string[] | null = this.getEvidence(name)
+      if (ls && ls.length > 0) { result[name] = ls }
+    },
+    )
+    return result
+  }
+
   // implementation of the updateEvidence interface function.
   updateEvidence = (evidence: { [name: string]: string[]}) => {
     Object.keys(evidence).forEach(name => {
       const node = this._nodes.find(x => x.name === name)
       if (node) {
         const evidenceFunc = this._formulas[node.evidenceFunction] as EvidenceFunction
-        const lvlIdxs: number[] = uniq(evidence[name].map(l => node.levels.indexOf(l)).filter(x => x >= 0)).sort()
+        const lvlIdxs: number[] = uniq(evidence[name].map(l => node.levels.indexOf(l))).sort()
+
+        if (lvlIdxs.length > 0 && lvlIdxs[0] === -1) throw new Error(`Cannot update the evidence.   One of levels provided for ${node.name} is not valid.`)
         if (lvlIdxs.length > 0 && evidenceFunc.levels !== lvlIdxs) {
           evidenceFunc.levels = lvlIdxs
           this.clearCachedValues(evidenceFunc.id)
@@ -249,10 +262,19 @@ export class LazyPropagationEngine implements IInferenceEngine {
    */
   private inferFromJointDistribution (nodeIds: NodeId[], event: {[name: string]: string[]}): number {
     const names = Object.keys(event)
-    console.warn(`The requested join (${names.join(', ')} are not in the same clique of the junction tree)`)
-    console.warn('Use \'getJointDistribution\' to efficiently make repeated inferences.')
-    const dist = this.getJointDistribution(names, [])
-    return dist.infer(event)
+
+    const nodes = names.map(name => {
+      const node = this._nodes.find(node => node.name === name)
+      if (node === undefined) throw new Error(`Cannot infer probability.   Variable ${name} does not exist`)
+      return node
+    })
+
+    const values = nodes.map(node => {
+      const ns = event[node.name]
+      return ns.map(n => node.levels.indexOf(n)).filter(n => n >= 0)
+    })
+    if (values.some(vs => vs.length === 0)) return 0
+    return inferArbitraryJointProbability(this._nodes, this._cliques, this._formulas, this._potentials, this._separators, this._separatorPotentials, nodes.map(x => x.id), values)
   }
 
   /** Given a collection of nodes and levels representing an event, and a clique
