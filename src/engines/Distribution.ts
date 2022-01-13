@@ -242,21 +242,13 @@ export class Distribution {
     const numberOfLevels = this._variableLevels.map(x => x.length)
     if (potentials.length !== product(numberOfLevels)) { throw new Error('Cannot set the potentials for the distribution.   The provided array has the wrong number of elements.') }
     // verify that each block of a conditional distribution is non-zero
+    const blocksize = product(numberOfLevels.slice(0, this._numberOfHeadVariables))
     let total = 0
-    let subtotal = 0
-    potentials.forEach((p, i) => {
-      const combos = indexToCombination(i, numberOfLevels)
-      const headLevels = combos.slice(0, this._numberOfHeadVariables)
-      if (i > 0 && headLevels.every(x => x === 0)) {
-        if (subtotal === 0) throw new Error('Cannot set the potentials for the distribution.  The probabilities are undefined for some combinations of the parent varaibles')
-        subtotal = 0
-      }
-
+    for (let i = 0; i < potentials.length; i += blocksize) {
+      const subtotal = sum(potentials.slice(i, i + blocksize))
       if (subtotal === 0) throw new Error('Cannot set the potentials for the distribution.  The probabilities are undefined for some combinations of the parent varaibles')
-      if (total === 0) throw new Error('Cannot set the potentials for the distribution.  The probabilities are all zero.')
-      subtotal += p
-      total += p
-    })
+      total += subtotal
+    }
     this._potentialFunction = potentials.map(p => p / total)
   }
 
