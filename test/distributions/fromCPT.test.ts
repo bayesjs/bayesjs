@@ -4,7 +4,7 @@ import { fromCPT } from '../../src/engines'
 
 describe('fromCPT', () => {
   it('encodes the correct joint distribution without parents', () => {
-    const dist = fromCPT('Foo', { bar: 10, baz: 90 })
+    const dist = fromCPT('Foo', [], [['bar', 'baz']], { bar: 10, baz: 90 })
     const json = dist.toJSON()
     expect(json.numberOfHeadVariables).toEqual(1)
     expect(json.variableNames).toEqual(['Foo'])
@@ -12,7 +12,7 @@ describe('fromCPT', () => {
     expect(json.potentialFunction).toEqual([0.1, 0.9])
   })
   it('encodes the correct joint distribution with parents', () => {
-    const dist = fromCPT('Foo', [
+    const dist = fromCPT('Foo', ['animal', 'color'], [['bar', 'baz'], ['cat', 'dog'], ['black', 'white', 'brown']], [
       { when: { animal: 'cat', color: 'black' }, then: { bar: 10, baz: 90 } },
       { when: { animal: 'cat', color: 'white' }, then: { bar: 70, baz: 30 } },
       { when: { animal: 'dog', color: 'black' }, then: { bar: 80, baz: 20 } },

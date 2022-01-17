@@ -1,5 +1,5 @@
 import { FastPotential, combinationToIndex, indexToCombination } from './FastPotential'
-import { product, uniq, sum, max, union } from 'ramda'
+import { product, uniq, sum, max } from 'ramda'
 import { evaluateMarginalPure } from './evaluation'
 import { ICptWithParents, ICptWithoutParents } from '../types'
 import { commaSep } from './util'
@@ -473,51 +473,56 @@ export class Distribution {
 
 // This function is designed to support legacy ICPT interface for
 // specifying a probability distribution.
-export function fromCPT (name: string, cpt: ICptWithParents | ICptWithoutParents) {
+export function fromCPT (name: string, parentNames: string[], levels: string[][], cpt: ICptWithParents | ICptWithoutParents) {
+  const throwErr = (reason: string) => { throw new Error(`Cannot create conditional distribution for variable ${name}.  ${reason}`) }
   if (Array.isArray(cpt)) {
-    const parentNames = cpt.reduce((acc: string[], row) => union(acc, Object.keys(row.when)), [])
-    const parentLevels: string[][] = parentNames.map(pname =>
-      cpt.reduce((acc: string[], row) => {
-        if (row.when[pname] === undefined) throw new Error(`Cannot create distribution for variable ${name}.  The rows of the cpt are missing entries for ${pname}.`)
-        if (acc.includes(row.when[pname])) return acc
-        return [...acc, row.when[pname]]
-      }, []),
-    )
-    if (parentNames.length === 0) throw new Error(`Cannot create conditional distribution for variable ${name}.   It has no parent variables`)
-    parentLevels.forEach((ls, i) => {
-      if (ls.length === 0) throw new Error(`Cannot create conditional distribution for variable ${name}.   ${parentNames[i]} has no levels`)
+    if (parentNames.length === 0) throwErr('It has no parent variables')
+    if (!levels[0] || levels[0].length === 0) throwErr(`${name} has no levels`)
+    parentNames.forEach((pname, i) => {
+      const ls = levels[i + 1]
+      if (!ls || ls.length === 0) throwErr(`${parentNames[i]} has no levels`)
     })
-    const parents = parentNames.map((name, i) => ({ name, levels: parentLevels[i] }))
+    const parents = parentNames.map((name, i) => ({ name, levels: levels[i + 1] }))
+    const [headLevels, ...parentLevels] = levels
 
-    const headLevels: string[] = cpt.reduce((acc: string[], row) => union(acc, Object.keys(row.then)), [])
-    if (headLevels.length === 0) throw new Error(`Cannot create conditional distribution for variable ${name}.   The head variable has no levels`)
-
-    const numberOfLevels: number[] = [headLevels.length, ...parentLevels.map(x => x.length)]
+    const numberOfLevels: number[] = levels.map(xs => xs.length)
     const resultSize: number = product(numberOfLevels)
     const result = Array(resultSize).fill(0)
     let total = 0
-    cpt.forEach(row => {
-      const parentCombo: number[] = parentNames.map((pname, variableIdx) => parentLevels[variableIdx].indexOf(row.when[pname]))
+    cpt.forEach((row, rowidx) => {
+      // Construct the combination for each of thenetries in the row.
+      const parentCombo: number[] = parentNames.map((pname, i) => {
+        if (!row.when || !row.when[pname]) throwErr(`Row ${rowidx} does not have an entry for parent variable ${pname}.`)
+        const lvl = row.when[pname]
+        const lvlidx = parentLevels[i].indexOf(lvl)
+        if (lvlidx < 0) throwErr(`${lvl} is not a valid level.`)
+        return lvlidx
+      })
+
       headLevels.forEach((level, i) => {
         const idx = combinationToIndex([i, ...parentCombo], numberOfLevels)
-        result[idx] = row.then[level] || 0
+        if (!row.then || row.then[level] == null) throwErr(`Row ${rowidx} is missing an entry for the level ${level} of the head variable.`)
+        const p = row.then[level]
+        result[idx] = p
         total += row.then[level]
       })
     })
     const normalizedResult = result.map(x => x / total)
     return new Distribution([{ name, levels: headLevels }], parents, normalizedResult)
   } else {
-    const levels = uniq(Object.keys(cpt))
-    if (levels.length === 0) throw new Error(`Cannot create distribution for variable ${name}.  It has no levels`)
-    const v: {name: string; levels: string[]} = { name, levels }
-    const potentialFunction = Array(levels.length).fill(0)
+    if (levels.length < 1 || levels[0].length === 0) throwErr('It has no levels')
+    const [headLevels] = levels
+    const v: {name: string; levels: string[]} = { name, levels: headLevels }
+    const potentialFunction = Array(headLevels.length).fill(0)
     let total = 0
     Object.entries(cpt).forEach(([k, v]) => {
-      if (v < 0) throw new Error(`Cannot create distribution for variable ${name}.  The probability for ${k} is less than zero.`)
+      if (v < 0) throwErr(`The probability for ${k} is less than zero.`)
       total += v
-      potentialFunction[levels.indexOf(k)] += v
+      const lvlIdx = headLevels.indexOf(k)
+      if (lvlIdx < 0) throwErr(`${k} is not a valid level`)
+      potentialFunction[headLevels.indexOf(k)] += v
     })
-    if (total < 0) throw new Error(`Cannot create distribution for variable ${name}.  At least one level must have a non-zero liklihood.`)
+    if (total < 0) throwErr('At least one level must have a non-zero liklihood.')
     potentialFunction.forEach((p, i) => { potentialFunction[i] = p / total })
     return new Distribution([v], [], potentialFunction)
   }

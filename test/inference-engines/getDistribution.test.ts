@@ -10,7 +10,7 @@ describe('getDistribution', () => {
     const name = 'node3'
     const observed = engine.getDistribution(name).toJSON()
     const cpt = network[name]?.cpt as ICptWithParents | ICptWithoutParents
-    const expected = fromCPT('node3', cpt).toJSON()
+    const expected = fromCPT('node3', [], [['T', 'F']], cpt).toJSON()
     expect(observed.numberOfHeadVariables).toEqual(expected.numberOfHeadVariables)
     expect(observed.variableNames).toEqual(expected.variableNames)
     expect(observed.variableLevels).toEqual(expected.variableLevels)

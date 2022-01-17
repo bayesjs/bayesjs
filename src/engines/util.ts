@@ -2,7 +2,7 @@ import createCliques from '../inferences/junctionTree/create-cliques'
 import { createICliqueFactors } from '../inferences/junctionTree/create-initial-potentials'
 import { getConnectedComponents } from '../utils/connected-components'
 import { FastPotential, indexToCombination } from './FastPotential'
-import { EvidenceFunction, Formula, FormulaType, marginalize, mult, NodePotential, reference } from './Formula'
+import { EvidenceFunction, Formula, FormulaType, marginalize, mult, NodePotential, reference, Unit } from './Formula'
 import { CliqueId, NodeId, ConnectedComponentId } from './common'
 import { IClique, ICliqueFactors, IGraph, INetwork } from '..'
 import { FastNode } from './FastNode'
@@ -209,6 +209,7 @@ export const upsertFormula = (formulas: Formula[], formulaLookup: { [name: strin
     case FormulaType.EVIDENCE_FUNCTION :
     case FormulaType.NODE_POTENTIAL :
     case FormulaType.PRODUCT :
+    case FormulaType.UNIT:
     case FormulaType.MARGINAL : {
       const idx = formulaLookup[formula.name]
       if (idx == null) {
@@ -233,10 +234,6 @@ export const upsertFormula = (formulas: Formula[], formulaLookup: { [name: strin
         throw new Error(`Null reference to formula ${formula.id}`)
       }
     }
-    case FormulaType.UNIT:
-      // NEVER ADD THE UNIT POTENTIAL!  It should already be optimized away from being included
-      // directly in any result.
-      return formula
   }
 }
 
@@ -319,7 +316,12 @@ export function initializeCliques (info: NetworkInfo, upsert: (formula: Formula)
 
     // Populate the prior potentials for the clique.  Make sure that the
     // reference count for the factor nodes is updated.
-    fastclique.prior = upsert(mult(factors.map((nodeId: NodeId) => reference(nodeId, formulas)))).id
+    if (factors.length > 0) {
+      fastclique.prior = upsert(mult(factors.map((nodeId: NodeId) => reference(nodeId, formulas)))).id
+    } else {
+      const u = new Unit()
+      fastclique.prior = upsert(u).id
+    }
   })
 }
 
@@ -393,8 +395,10 @@ export function initializePriorNodePotentials (network: {[name: string]: {
       return
     }
     // if a CPT was provided, then convert it to a distribution and add it.
+    const parentNames = node.parents.map(x => fastNodes[x].name)
+    const levels = [node.levels, ...node.parents.map(x => fastNodes[x].levels)]
     if (network[node.name].cpt) {
-      const dist = fromCPT(node.name, network[node.name].cpt as ICptWithParents | ICptWithoutParents)
+      const dist = fromCPT(node.name, parentNames, levels, network[node.name].cpt as ICptWithParents | ICptWithoutParents)
       // console.warn('The use of ICptWithParents or ICptWithoutParents is deprecated and will be removed in a future version.   Replace with Distribution objects to avoid this warning.')
       setDistribution(dist, fastNodes, potentials)
       return
