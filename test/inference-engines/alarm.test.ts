@@ -146,7 +146,7 @@ const infersAlarmGiveMaryCallsFalse = (engine: IInferenceEngine) => {
 }
 
 const infersSetDistribution = (engine: IInferenceEngine) => {
-  engine.setDistribution(fromCPT('BURGLARY', { T: 0.05, F: 0.95 }))
+  engine.setDistribution(fromCPT('BURGLARY', [], [['T', 'F']], { T: 0.05, F: 0.95 }))
   const { infer } = engine
 
   expect(infer({ BURGLARY: ['T'] }).toFixed(4)).toBe('0.0178')

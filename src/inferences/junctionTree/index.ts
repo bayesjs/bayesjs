@@ -2,17 +2,19 @@ import {
   ICombinations,
   IInfer,
   INetwork,
+  ICptWithParents,
+  ICptWithoutParents,
 } from '../../types'
 
-import { LazyPropagationEngine, Distribution, fromCPT } from '../../engines'
+import { LazyPropagationEngine } from '../../engines'
 
 export const infer: IInfer = (network: INetwork, nodes: ICombinations, given: ICombinations = {}): number => {
-  const net: { [name: string]: { levels: string[]; parents: string[]; distribution?: Distribution}} = {}
+  const net: { [name: string]: { levels: string[]; parents: string[]; cpt?: ICptWithParents | ICptWithoutParents}} = {}
   Object.values(network).forEach(node => {
     net[node.id] = {
       levels: node.states,
       parents: node.parents,
-      distribution: fromCPT(node.id, node.cpt),
+      cpt: node.cpt,
     }
   })
   const engine = new LazyPropagationEngine(net)
