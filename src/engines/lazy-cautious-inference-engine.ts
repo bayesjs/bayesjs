@@ -140,15 +140,6 @@ export class LazyPropagationEngine implements IInferenceEngine {
     const potentialFunction = arbitraryJoin(this._nodes, this._cliques, this._formulas, this._potentials, this._separators, this._separatorPotentials, headIdxs, parentIdxs)
     const dist = new Distribution(headVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], parentVariables.map(n => this._nodes.find(x => x.name === n)) as FastNode[], potentialFunction)
 
-    // // remove any levels that contradict the current evidence.
-    // parentIdxs.concat(headIdxs).forEach((idx) => {
-    //   const node = this._nodes[idx]
-    //   const evidence = this.getEvidence(node.name)
-    //   if (evidence && evidence.length > 0) {
-    //     difference(node.levels, evidence).forEach(level => dist.removeLevel(node.name, level))
-    //   }
-    // })
-
     return dist
   }
 

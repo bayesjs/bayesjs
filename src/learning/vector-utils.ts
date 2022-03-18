@@ -1,4 +1,3 @@
-
 import { FastPotential } from '..'
 import { sum } from 'ramda'
 
