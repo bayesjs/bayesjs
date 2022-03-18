@@ -15,3 +15,4 @@ export const { infer } = junctionTree
 export * from './types'
 export * from './utils/inferAll'
 export { LazyPropagationEngine as InferenceEngine, FastNode, FastClique, FastPotential, Formula, Distribution } from './engines'
+export { learnParameters } from './learning'

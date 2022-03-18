@@ -4,11 +4,11 @@ import { getConnectedComponents } from '../utils/connected-components'
 import { FastPotential, indexToCombination } from './FastPotential'
 import { EvidenceFunction, Formula, FormulaType, marginalize, mult, NodePotential, reference, Unit } from './Formula'
 import { CliqueId, NodeId, ConnectedComponentId } from './common'
-import { IClique, ICliqueFactors, IGraph, INetwork } from '..'
+import { IClique, ICliqueFactors, IGraph, INetwork, InferenceEngine } from '..'
 import { FastNode } from './FastNode'
 import { FastClique } from './FastClique'
 import { messageName } from './symbolic-propagation'
-import { reduce, product } from 'ramda'
+import { reduce, product, sum } from 'ramda'
 import { ICptWithParentsItem, ICptWithoutParents, ICptWithParents } from '../types'
 import { Distribution, fromCPT } from './Distribution'
 import { evaluateMarginalPure } from './evaluation'
@@ -417,4 +417,86 @@ export function initializePriorNodePotentials (network: {[name: string]: {
       potentials[node.id] = Array(product(numberOfLevels)).fill(1 / product(numberOfLevels))
     }
   })
+}
+
+/** Given an index of an element in a joint or conditional distribution  which
+ * has a single parent head variable, compute the index of the corresponding
+ * row in the marginal distribution in which the head variable has been removed.
+ * That is, find the row in the marginal distribution that has the same
+ * combination of parent variables.
+ * @param jointIndex: the index of the row in the conditional or joint
+ *   distribution
+ * @param numberOfHeadLevels: The number of levels of the head variable.
+*/
+export function parentIndex (jointIndex: number, numberOfHeadLevels: number) {
+  // Sanity checks
+  const throwErr = (reason: string) => (`Cannot compute the parent index for the joint/conditional index ${jointIndex}.  ${reason}`)
+  if (numberOfHeadLevels < 1) throwErr(`The number of head levels must be a postive number.   Found ${numberOfHeadLevels}`)
+  if (!Number.isInteger(numberOfHeadLevels)) throwErr(`The number of head levels must be a whole number.   Found ${numberOfHeadLevels}`)
+  if (jointIndex < numberOfHeadLevels) throwErr('The joint/conditional index must be greater than the number of levels in the head variable.')
+  if (!Number.isInteger(jointIndex)) throwErr(`The joint/conditional must be a whole number.  Found ${jointIndex}.`)
+  return Math.floor(jointIndex / numberOfHeadLevels)
+}
+
+/** Marginalize a potential function to remove the first variable.
+ * @param innerPotential: The potential function to marginalize
+ * @param numberOfHeadLevels: The number of levels that the head variable has
+ *
+ * @returns: Marginalizing the potential function for P(x,y) will return the potential
+ * function for P(y) provided that the inner potential has been made consistent by
+ * message passing.
+ */
+export function removeFirstVariable (innerPotential: FastPotential, numberOfHeadLevels: number): FastPotential {
+  const result = Array(Math.floor(innerPotential.length / numberOfHeadLevels)).fill(0)
+  innerPotential.forEach((p, i) => { result[parentIndex(i, numberOfHeadLevels)] += p })
+  return result
+}
+
+/** Condition a potential function to remove any zero valued potentials.
+ * Speficially, for any block of the potential function that contains
+ * at least one value that is less than or equal to zero, add small
+ * number to each element of the block such that all the elements are
+ * safely positive.   For any block that gets conditioned, normalize
+ * the elements to ensure that they total to unity.
+ * @param potentials - The potential function being normalized
+ * @param numberOfHeadLevels - the number of levels of the head
+ *   variable of the distribution.   This value is used to identify
+ *   the blocks of the distribution.
+ **/
+export function adjustZeroPotentials (potentials: FastPotential, numberOfHeadLevels: number): FastPotential {
+  const SQRTEPS = Math.sqrt(Number.EPSILON)
+  const result: FastPotential = []
+  for (let idx = 0; idx < potentials.length; idx += numberOfHeadLevels) {
+    const block: number[] = potentials.slice(idx, idx + numberOfHeadLevels)
+    const mn = Math.min(...block)
+    const total = sum(block)
+    if (mn <= 0) {
+      block.forEach((x) => {
+        result.push((x - mn + SQRTEPS) / (total + (SQRTEPS - mn) * numberOfHeadLevels))
+      })
+    } else {
+      result.push(...block)
+    }
+  }
+
+  return result
+}
+
+/** Set the local distributions for each of an inference engine's variables
+ * equal to the provided potential functions, set the evidence to the provided
+ * evidence and clear any cached computations.
+ * @param engine: The inference engine to modify
+ * @param localPotentials: The collection of potential functions for the
+ *   inference engine's variables.
+ * @param evidence: A collection of possibly empty evidence to apply to the
+ *   engine
+ * NOTE: The provided local potential functions must be conditional distributions
+ *   over the engine's variables and have the correct number of CPT entries.
+ *   This condition is not checked by this function, and must be ensured by the
+ *   caller.
+ */
+export function restoreEngine (engine: InferenceEngine, localPotentials: (FastPotential|null)[], evidence: { [name: string]: string[]}) {
+  const potentials = engine.toJSON()._potentials.map((_, i) => i < localPotentials.length ? localPotentials[i] : null)
+  Object.assign(engine, { _potentials: potentials })
+  engine.setEvidence(evidence)
 }
