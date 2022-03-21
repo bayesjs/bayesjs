@@ -10,6 +10,15 @@ import { objectiveFunction } from './objective-functions/online-learning-objecti
 import { SQRTEPS, CUBEROOTEPS } from './vector-utils'
 import { lineSearch } from './line-search'
 
+export type LearningResult = {
+  steps: number;
+  converged: boolean;
+  value: number;
+  directionalDerivative: number;
+  parameters: FastPotential[];
+  message: string;
+}
+
 /** Compute a relative gradient that can be used for detecting if
  * the initial parameters are a maximizer for the objective function.
  * @param current - the current (intial) tower of derivatives
@@ -81,7 +90,7 @@ function relativeChange (current: TowerOfDerivatives, trial: TowerOfDerivatives)
  *   optimal.   It may be necessary to use additional heuristics (e.g. tabu search) to
  *   find globally optimal assignments.
  */
-export function learnParameters (engine: InferenceEngine, data: PairedObservation[], learningRate: number, maxIterations: number, tolerance: number) {
+export function learnParameters (engine: InferenceEngine, data: PairedObservation[], learningRate: number, maxIterations: number, tolerance: number): LearningResult {
   // Perform some sanity checks on the data and parameters before we start
   // mutating the inference engine.
   const throwErr = (reason: string) => { throw new Error(`Cannot update Bayes network. ${reason}`) }
@@ -118,7 +127,7 @@ export function learnParameters (engine: InferenceEngine, data: PairedObservatio
   // exit.
   if (relativeGradient(current) < 0.001 * CUBEROOTEPS) {
     restoreEngine(engine, cachedPriors, initialEvidence)
-    return { steps: 0, converged: true, ...current, message: statusMessage(StepStatus.GRADIENT_TOO_SMALL) }
+    return { steps: 0, converged: true, value: current.value, directionalDerivative: current.directionalDerivative, parameters: current.xs, message: statusMessage(StepStatus.GRADIENT_TOO_SMALL) }
   }
 
   let iteration = 0
@@ -147,5 +156,12 @@ export function learnParameters (engine: InferenceEngine, data: PairedObservatio
   // the objective function.  Restore the inference engine to the original state
   // and return a "failure" result.
   restoreEngine(engine, cachedPriors, initialEvidence)
-  return makeResult(iteration, current, false, statusMessage(StepStatus.STEPS_EXCEEDED))
+  return {
+    steps: iteration,
+    value: current.value,
+    directionalDerivative: current.directionalDerivative,
+    converged: false,
+    parameters: current.xs,
+    message: statusMessage(StepStatus.STEPS_EXCEEDED),
+  }
 }
